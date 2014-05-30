@@ -81,22 +81,41 @@ The built-in collections in Scala are strict in the sense all operations are dir
 Since Scala 2.8, the Views joined the built-in toolbox to offer non-strict collections using the common interface of collections.
 They allow to create a proxy over a collection that captures the operations on them until an operation force it.
 The purpose of the proxy is to change the evaluation strictness of the collections by handling the computation itself when it see fits.
-For example a call to \verb%flatMap% over a View returns immediately whereas over a strict collection this may take some time to return.
+For example a call to \verb|flatMap| over a View returns immediately whereas over a strict collection this may take some time to return.
 This is done by implementing all methods of the collection interface in a way the operations are remembered and done when necessary
+The wrapper is kept to use non-strict operations then the programmer can force the conversion into a regular collection: this is done by unwrapping the proxy after the computations and filling a regular collection with the result.
 This design decision has great advantages when it comes to people experienced with Scala collections because there is no external difference between them.
 Unfortunately it has two important costs for Scala in terms of the implementation and for the programmer who expect consistent and efficiently results.
 We will develop these aspects in the section and how we approached differently the problem.
 
+Independently, Scala added later a way to convert collections to parallel variants in order to compute the operations with multiple cores.
+The thin wrapper is specialized depending on the underlying type, most of the types requires constant time for this conversion.
+The wrapper provides the same interface with the usual collections, thus there is no difference again in the code after the conversion.
+The programmer applies the methods as usual then he can call a method to convert back to the regular collections (unwrapping).
+
 % talk about java 8 streams, limitations/bad design? (adv: unboxed?)
 % (java: problem type dependent)
+Java 8 was recently released with a new toolbox dedicated to functional programming (eg: lambda functions) and the new package Stream.
+These concepts allow the programmer to finally manipulate concisely sequences with \verb|flatMap| and the similar functions well known in Scala.
+The concept of Stream in Java 8 is different of the Streams in Scala.
+The first is the Java implementation of the non-strict Views we discussed above whereas Scala Streams are infinite non-strict sequences, usually defined recursively.
+Moreover the Java Stream can be converted to a parallel variant as the Scala Views, the main difference is that Java implemented a specialized version only for Streams and the interface is very different than the usual Java collections.
+Java Stream and Scala Views have an important number of common methods such as \verb|flatMap|, \verb|find|, \verb|min|/\verb|max| and the like.
+They both wrap the inner structure and require the programmer to call specific methods to unwrap, such as \verb|toArray|, or until he calls a folding method.
+They both require to explicitly convert to non-strict versions and then to parallelized variants if needed.
+The main difference is that Java has severe limitations with return values depending on Generics type: this is visible for all variants of \verb|flatMap| whose name is postfixed by the type explicitly, eg: \verb|flatMapToInt| and return a specialized type, eg: \verb|IntStream|.
+An important problem with Java Stream is the lack of transparent referenceability and reusability: after a terminal operation (Folders) on a Stream, it cannot be reused, it is consumed by the operation (side-effect) and can never be reused.
+This limits greatly the combinatorial power of Streams as one need to create new Stream for each new use whereas Views can be used multiple times and be composed together.
 
 \section{Views}
+We now define the properties of Views and describe the constraint we must satisfy in our API based on the experience of the previous works.
+
 % what operations/methods make sense?
+As we said, Views are non-strict collections and the programmer should expect constant time and memory when he uses {\it Transformers} functions.
 % why scala views broken, which methods useless (never finish)
 % (flatten -> list, permutations)
 % use inherited collections API -> broken
 % problem of inefficiency, why cannot implement certain?
-\lipsum[3]
 
 \section{Design}
 % hierarchy: interface trait, impl-spec trait, classes
