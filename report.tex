@@ -72,10 +72,23 @@ There exists two types of operations over Views:
 In this work, we focused on a powerful subset of the actual Scala collections API to preserve the efficiency of the Views while providing very powerful and functional non-strict collections.
 
 \section{Previous work}
+Scala and its collection offer a large toolbox of functions taken from functional paradigm such as \verb|flatMap| and \verb|aggregate| in a object-oriented hierarchy of classes with common interfaces.
+This collection interface is declared in the parent class \verb|Traversable|\cite{scala-collections} which is inherited by multiple types of collection in order to provide a common API that operates uniformly on all these different structures transparently for the programmer: whatever he uses is a \verb|List|, an \verb|Array|, a \verb|Map|, a \verb|LinkedList| or any descent of these classes, they all share this common methods.
+The programmer has to learn and understand it once, then he can use his experience for any of these collections easily: it's intuitive and greatly increase the productivity.
+The built-in collections in Scala are strict in the sense all operations are directly computed because Scala is a strict language, although the programmer can specify the \verb|lazy| variable-keyword, this doesn't solve the problem optimally.
+
 % scala views, broken
+Since Scala 2.8, the Views joined the built-in toolbox to offer non-strict collections using the common interface of collections.
+They allow to create a proxy over a collection that captures the operations on them until an operation force it.
+The purpose of the proxy is to change the evaluation strictness of the collections by handling the computation itself when it see fits.
+For example a call to \verb%flatMap% over a View returns immediately whereas over a strict collection this may take some time to return.
+This is done by implementing all methods of the collection interface in a way the operations are remembered and done when necessary
+This design decision has great advantages when it comes to people experienced with Scala collections because there is no external difference between them.
+Unfortunately it has two important costs for Scala in terms of the implementation and for the programmer who expect consistent and efficiently results.
+We will develop these aspects in the section and how we approached differently the problem.
+
 % talk about java 8 streams, limitations/bad design? (adv: unboxed?)
 % (java: problem type dependent)
-\lipsum[2]
 
 \section{Views}
 % what operations/methods make sense?
