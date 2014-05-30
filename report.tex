@@ -12,6 +12,7 @@
 \usepackage{enumerate}
 \usepackage{graphicx}
 \usepackage{lastpage}
+\usepackage{cite}
 
 \usepackage{lipsum}
 
@@ -33,16 +34,53 @@
     }
 
 \begin{document}
+\section*{Abstract}
+Scala is a powerful language which currently provides a built-in library for lazy views with some important shortcomings for the users such as unexpected and unintuitive behaviors.
+In this work we created a new library, based on Scala Blitz, to provide lightweight, lazy and parallel-efficient views from the start.
+% 1/2 lines of desc
+
 \section{Introduction}
+% subject of the work
+% scala (powerful, fast-moving lang
+% standard collections, lazy and views
+Scala is a powerful and fast-moving language that fuses object-oriented programming with a wide range of function programming concepts \cite{scala-overview}.
+It runs on the JVM and as such it stays compatible with Java and its ecosystem.
+Scala itself provides an important number of libraries, for example Scala collection, which implements Lists, Arrays, Maps and Sets with immutable and mutable variants.
+They are more in accord within the Scala environment than the Java collections, moreover they provide the functional programming concepts.
+
 \lipsum[1]
 
 \section{Previous work}
+% scala views, broken
+% talk about java 8 streams, limitations/bad design? (adv: unboxed?)
+% (java: problem type dependent)
 \lipsum[2]
 
 \section{Views}
+% what operations/methods make sense?
+% why scala views broken, which methods useless (never finish)
+% problem of inefficiency, why cannot implement certain?
 \lipsum[3]
 
 \section{Design}
+% hierarchy: interface trait, impl-spec trait, classes
+% implicit extension: ext-method, evidence
 \lipsum[4]
+
+\section{Usability}
+% external trait, interface
+\lipsum[5]
+
+\section{Extensibility}
+% internal trait, how to extend, aggInternal, BlitzViewImpl
+\lipsum[6]
+
+\section{Conclusion}
+% future work, what's next?
+\lipsum[7]
+
+\bibliography{report}{}
+\bibliographystyle{plain}
+
 
 \end{document}
