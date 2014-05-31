@@ -13,6 +13,7 @@
 \usepackage{graphicx}
 \usepackage{lastpage}
 \usepackage{cite}
+\usepackage{listings}
 
 \usepackage{lipsum}
 
@@ -32,6 +33,25 @@
     /Title (Scala BlitzView)
     /Subject (Report)
     }
+
+% "define" Scala listing
+\lstdefinelanguage{scala}{
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+\lstset{language=scala}
 
 \begin{document}
 
@@ -111,22 +131,115 @@ This limits greatly the combinatorial power of Streams as one need to create new
 We now define the properties of Views and describe the constraint we must satisfy in our API based on the experience of the previous works.
 
 % what operations/methods make sense?
-As we said, Views are non-strict collections and the programmer should expect constant time and memory when he uses {\it Transformers} functions.
+As we said, Views are non-strict collections and they guarantee operations are in {\it constant} time and {\it constant} memory for transformer functions.
+This is possible because the View, the proxy that contains the underlying collection which was converted into a View, contains the transformers that the programmer requested until now.
+As the computations are bookmarked into the view internals, no change is made to the inner collection, but only in the proxy which can be mutable or not.
+In the current Scala infrastructures, it was decided these Views are immutable, thus each time a transformer is applied on it, a new View is returned.
+Multiple advantages are offered this way: first the programmer can rely on the immutability, for example he can store multiple Views over the same data without worrying about side-effects on his original collection nor his intermediate Views.
+Let's take an example to illustrate with the current Scala Views:
+
+\begin{lstlisting}
+val xs = (0 to 10).toArray
+val v = xs.view
+val u = v.map(_ + 10)
+\end{lstlisting}
+
+The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the proxies, here \verb|v| or \verb|u|.
+Moreover \verb|u| is independent of \verb|u| and both Views can be used as many time as needed.
+These very nice properties are important because they increase the possible use cases.
+For example Scala Views support mutable collections: by creating a View on an underlying mutable HashMap, the programmer can create a view over his data as on can do in SQL where as the underlying data change views are always up to date accordingly.
+
+\begin{lstlisting}
+import collection.mutable.HashMap
+val m = HashMap((1,2))
+val v = m.view.map(case (x,y) => x+y)
+v.toArray // Array(3)
+v.sum // 3
+m += ((3,4))
+v.toArray // Array(7, 3)
+v.sum // 10
+\end{lstlisting}
+
+Views should be seen as an adaptor over a collection where each element passes through its pipeline made of operations (the transformers) which are computed and are collected by the last operators (the folder) as they pass by.
+The choice of whether an operation is a transformer or a folder will depend on the internal implementation of the library.
+
 % why scala views broken, which methods useless (never finish)
-% (flatten -> list, permutations)
+The problem that interest us in this project was to overcome the limitations seen in the current implementation of Views.
+One such problem is due to the fact Views inherit from the whole collection API which contains all usual operations that were designed to work on strict and mostly on sequential structures.
+% permutations
+Although operations such as \verb|permutations| makes perfectly sense for the usual collections, these operations cannot be efficiently implemented in the case of Views.
+Despite this fact, this kind of operations is available in current Views but they are not correctly implemented which can make it crash, leading to an unexpected behavior:
+
+\begin{lstlisting}
+val xs = 0 to 3
+xs.permutations.toArray
+// correct result
+xs.view.permutations.toArray
+// UnsupportedOperationException
+\end{lstlisting}
+
+There exists other operations that doesn't play nice when they are used on Views and this is a problem for programmer who expect the least surprise.
+% flatten -> list
+For example \verb|flatten| does not return a flatten View but a new List containing the result of the flattening, even if we use Views inside and outside, this operation should have been non-strict as well.
+
+Other important problems with Scala Views arise when we want to combine non-strictness of Views with parallelism of Par together.
+The following is permitted although one version doesn't make sense:
+
+\begin{lstlisting}
+val xs = (0 to 1000).par.view
+val ys = (0 to 1000).view.par
+\end{lstlisting}
+
+Which one is correct? Are they equivalent? In fact they are not equivalent, worse, the second version seem to loose its non-strictness.
+
+From these problems we can see there is a leak of coordination between the collection API and the way we can construct parallelized Views.
+Scala collections offer too many methods that cannot be efficiently implemented or that does not make sense in a non-strict context, and the use of both Views and Par together should be done in a unified way to avoid these problems.
+
 % use inherited collections API -> broken
-% problem of inefficiency, why cannot implement certain?
 
 \section{Design}
+In this work we propose an alternative implementation of Scala Views that solves the issue of coordination between available methods and efficiency in non-strict and parallelized context.
+
+% problem of inefficiency, why cannot implement certain?
+The first design decision we made is to create a new interface, a trait, that does not contain problematic methods.
+There are different types of such methods: some are inherently sequential (eg: \verb|reduceRight|), some require forcing the View (eg: \verb|ordered|), some are inefficient anyway (eg: \verb|permutations|) and some are possible but trickier to implement (eg: \verb|takeWhile|).
+
+We focused our prototype on the most important ones:
+\begin{itemize}
+    \item \verb|[a] -> [b]|: \verb|map|, \verb|filter| which are transformers.
+    \item \verb|[a] -> b|: \verb|aggregate| is the most important. It is the building block for the other folders such as \verb|min|, \verb|sum|, \verb|find|, \verb|exists|, \verb|count| which are folders.
+\end{itemize}
+
 % hierarchy: interface trait, impl-spec trait, classes
+The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in our internal implementation.
+It represents a function from $A$ to $B$ where $A$ is contravariant and $B$ covariant.
+This trait is used to pipeline operations when we are folding: we first apply our transformations then we fold over a given function, this is the purpose of the method \verb|fold|.
+The important feature of these transformers are they are stackable: a transformer can contain an other transformer and so on, this is the purpose of \verb|>>|.
+In our design, there are three types of transformers: \verb|Map| which change the type, \verb|Filter| which can drop elements according to a predicate and \verb|Identity| used at the bottom of the stack.
+
+The second design decision is the structure of the class hierarchy for our Views:
+\begin{description}
+    \item[{\tt BlitzView}]: the top trait that describe the available operations (transformers and folders) on all Views.
+        It contains all the methods we just discussed above.
+    \item[{\tt BlitzViewImpl}]: contains the trait for our implementation.
+        Anyone is free to create a new implementation next to it, see section \ref{sec:ext}.
+        This trait inherits \verb|BlitzView| and provides the common implementation of all methods for subclasses in terms of a method \verb|aggInternal|.
+        The children classes then must only implement this method to inherit all operations of this design.
+    \item[{\tt BlitzViewC}]: is the View that contains an underlying collection.
+        This is the class that is used as a proxy closest to a wrapped collection and the only one that actually captures operations in a stack.
+    \item[{\tt BlitzViewVV}]: is the View that concatenates two Views together.
+        This would be the result of \verb|++| on two Views.
+    \item[{\tt BlitzViewFlattenVs}]: is the View that contains a list of View and flatten them together in a single View.
+\end{description}
+
 % implicit extension: ext-method, evidence
-\lipsum[4]
 
 \section{Usability}
 % external trait, interface
 \lipsum[5]
 
 \section{Extensibility}
+\label{sec:ext}
 % internal trait, how to extend, aggInternal, BlitzViewImpl
 \lipsum[6]
 
