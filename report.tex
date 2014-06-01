@@ -213,6 +213,19 @@ Here is the structure of the objects hierarchy for our Views:
         It inherits \verb|BlitzViewImpl|.
 \end{description}
 
+% piggy back on ScalaBlitz
+A second important design choice we made is to use ScalaBlitz\footnote{Homepage: http://scala-blitz.github.io/} for the actual computations.
+This library offers first-class collections in terms of performance because it was designed for efficiency by using parallelism and specialized code to avoid unnecessary boxing.
+Some novel ideas developed in a paper \cite{scala-parallel} such as {\it work stealing} are implemented in this library.
+We won't cover the details of the internal algorithms but suffices it to say the computation are dynamically dispatched among the processors according to the programmer policy (the context).
+
+The library itself provides the usual high-level operations on the major collections we need (\verb|Array|, \verb|Range|, \verb|Map| and \verb|Set|).
+Although we could have used multiple calls for transformers then reducers, we decided to augment ScalaBlitz with a new method (\verb|mapFilterReduce|) that we used to implement our internal methods (such as \verb|aggInternal|).
+This new function combines a \verb|flatMap| (map and reduce at once) and a general \verb|fold| in a single step.
+In practice, that means folding a View only require a single iteration over the underlying collection, each element is only used once
+This property stays true even as the number of transformers increase, this won't be true for regular collection transformers without optimisation.
+Moreover, in our design the programmer gains parallelism for free, this is fully integrated by the use of Scala Blitz whose algorithm can be configured (by importing some careful chosen \verb|implicit|s).
+
 % implicit extension: ext-method, evidence
 
 \section{Usability}
@@ -242,6 +255,9 @@ m += ((3,4))
 v.toArray // Array(7, 3)
 v.sum // 10
 \end{lstlisting}
+
+Scala Blitz offers different schedulers for parallelism based on work-stealing such as \verb|Sequential| (no parallelism), \verb|ForkJoin| (kernel pool) and even the programmer can create new ones.
+The scheduler is an implicit that can be imported or explicitly specified to the View methods.
 
 \section{Extensibility}
 \label{sec:ext}
