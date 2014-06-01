@@ -14,6 +14,7 @@
 \usepackage{lastpage}
 \usepackage{cite}
 \usepackage{listings}
+\usepackage{hyperref}
 
 \usepackage{lipsum}
 
@@ -51,7 +52,7 @@
   morestring=[b]',
   morestring=[b]"""
 }
-\lstset{language=scala}
+\lstset{language=scala, basicstyle=\ttfamily\scriptsize}
 
 \begin{document}
 
@@ -188,13 +189,13 @@ We focused our prototype on the most important ones:
 \end{itemize}
 
 % hierarchy: interface trait, impl-spec trait, classes
-The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in our internal implementation.
+The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in our internal implementation, this is inspired from the work of Martin Odersky in a prototype \cite{martin-view-prototype}.
 It represents a function from $A$ to $B$ where $A$ is contravariant and $B$ covariant.
-This trait is used to pipeline operations when we are folding: we first apply our transformations then we fold over a given function, this is the purpose of the method \verb|fold|.
-The important feature of these transformers are they are stackable: a transformer can contain an other transformer and so on, this is the purpose of \verb|>>|.
+This trait is used to pipeline operations when we are folding: we first apply the transformers then we apply the given folder, this is the purpose of the method \verb|fold|.
+The important feature of these transformers are they are recursive: a transformer can contain an other transformer and so on, this is the purpose of \verb|>>|.
 In our design, there are three types of transformers: \verb|Map| which applies a function on each element, \verb|Filter| which drops elements according to the given predicate function and \verb|Identity| used at the bottom of the stack.
 
-The second design decision is the structure of the class hierarchy for our Views:
+Here is the structure of the objects hierarchy for our Views:
 \begin{description}
     \item[{\tt BlitzView}]: the top trait that describe the available operations (transformers and folders) on all Views.
         It contains all the methods we just discussed above.
@@ -204,9 +205,12 @@ The second design decision is the structure of the class hierarchy for our Views
         The children classes then must only implement this method to inherit all operations of this design.
     \item[{\tt BlitzViewC}]: is the View that contains an underlying collection.
         This is the class that is used as a proxy closest to a wrapped collection and the only one that actually captures operations in a stack.
+        It inherits \verb|BlitzViewImpl|.
     \item[{\tt BlitzViewVV}]: is the View that concatenates two Views together.
         This would be the result of \verb|++| on two Views.
-    \item[{\tt BlitzViewFlattenVs}]: is the View that contains a list of View and flatten them together in a single View.
+        It inherits \verb|BlitzViewImpl|.
+    \item[{\tt BlitzViewFlattenVs}]: is the View that contains a list of View and concatenate the elements together in a single flattened View.
+        It inherits \verb|BlitzViewImpl|.
 \end{description}
 
 % implicit extension: ext-method, evidence
