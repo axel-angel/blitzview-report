@@ -121,44 +121,21 @@ The concept of Stream in Java 8 is different of the Streams in Scala.
 The first is the Java implementation of the non-strict Views we discussed above whereas Scala Streams are infinite non-strict sequences, usually defined recursively.
 Moreover the Java Stream can be converted to a parallel variant as the Scala Views, the main difference is that Java implemented a specialized version only for Streams and the interface is very different than the usual Java collections.
 Java Stream and Scala Views have an important number of common methods such as \verb|flatMap|, \verb|find|, \verb|min|/\verb|max| and the like.
-They both wrap the inner structure and require the programmer to call specific methods to unwrap, such as \verb|toArray|, or until he calls a folding method.
+They both wrap the inner structure and require the programmer to call specific methods to unwrap, such as \verb|toArray|, or when he calls a folding method.
 They both require to explicitly convert to non-strict versions and then to parallelized variants if needed.
 The main difference is that Java has severe limitations with return values depending on Generics type: this is visible for all variants of \verb|flatMap| whose name is postfixed by the type explicitly, eg: \verb|flatMapToInt| and return a specialized type, eg: \verb|IntStream|.
 An important problem with Java Stream is the lack of transparent referenceability and reusability: after a terminal operation (Folders) on a Stream, it cannot be reused, it is consumed by the operation (side-effect) and can never be reused.
-This limits greatly the combinatorial power of Streams as one need to create new Stream for each new use whereas Views can be used multiple times and be composed together.
+This limits greatly the combinatorial power of Streams as one needs to create new Stream for each new use whereas a single View can be reused alone and be part of other Views.
 
 \section{Views}
-We now define the properties of Views and describe the constraint we must satisfy in our API based on the experience of the previous works.
+We now define the properties of Views and describe the constraints we must satisfy in our API based on the experience of the previous works.
 
 % what operations/methods make sense?
-As we said, Views are non-strict collections and they guarantee operations are in {\it constant} time and {\it constant} memory for transformer functions.
-This is possible because the View, the proxy that contains the underlying collection which was converted into a View, contains the transformers that the programmer requested until now.
-As the computations are bookmarked into the view internals, no change is made to the inner collection, but only in the proxy which can be mutable or not.
+As we said, Views are non-strict collections and they guarantee {\it constant} time and {\it constant} memory for transformers.
+This is possible because the View (the proxy that wraps the underlying collection) remembers all transformers the programmer requested.
+As the computations are bookmarked into the view internals, no change is actually made to the inner collection, these only happen in the proxy.
 In the current Scala infrastructures, it was decided these Views are immutable, thus each time a transformer is applied on it, a new View is returned.
 Multiple advantages are offered this way: first the programmer can rely on the immutability, for example he can store multiple Views over the same data without worrying about side-effects on his original collection nor his intermediate Views.
-Let's take an example to illustrate with the current Scala Views:
-
-\begin{lstlisting}
-val xs = (0 to 10).toArray
-val v = xs.view
-val u = v.map(_ + 10)
-\end{lstlisting}
-
-The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the proxies, here \verb|v| or \verb|u|.
-Moreover \verb|u| is independent of \verb|u| and both Views can be used as many time as needed.
-These very nice properties are important because they increase the possible use cases.
-For example Scala Views support mutable collections: by creating a View on an underlying mutable HashMap, the programmer can create a view over his data as on can do in SQL where as the underlying data change views are always up to date accordingly.
-
-\begin{lstlisting}
-import collection.mutable.HashMap
-val m = HashMap((1,2))
-val v = m.view.map(case (x,y) => x+y)
-v.toArray // Array(3)
-v.sum // 3
-m += ((3,4))
-v.toArray // Array(7, 3)
-v.sum // 10
-\end{lstlisting}
 
 Views should be seen as an adaptor over a collection where each element passes through its pipeline made of operations (the transformers) which are computed and are collected by the last operators (the folder) as they pass by.
 The choice of whether an operation is a transformer or a folder will depend on the internal implementation of the library.
@@ -215,7 +192,7 @@ The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in o
 It represents a function from $A$ to $B$ where $A$ is contravariant and $B$ covariant.
 This trait is used to pipeline operations when we are folding: we first apply our transformations then we fold over a given function, this is the purpose of the method \verb|fold|.
 The important feature of these transformers are they are stackable: a transformer can contain an other transformer and so on, this is the purpose of \verb|>>|.
-In our design, there are three types of transformers: \verb|Map| which change the type, \verb|Filter| which can drop elements according to a predicate and \verb|Identity| used at the bottom of the stack.
+In our design, there are three types of transformers: \verb|Map| which applies a function on each element, \verb|Filter| which drops elements according to the given predicate function and \verb|Identity| used at the bottom of the stack.
 
 The second design decision is the structure of the class hierarchy for our Views:
 \begin{description}
@@ -236,7 +213,31 @@ The second design decision is the structure of the class hierarchy for our Views
 
 \section{Usability}
 % external trait, interface
-\lipsum[5]
+
+Let's take an example to illustrate how one can use Views:
+
+\begin{lstlisting}
+val xs = (0 to 10).toArray
+val v = xs.bview
+val u = v.map(_ + 10)
+\end{lstlisting}
+
+The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the proxies, here \verb|v| or \verb|u|.
+Moreover \verb|u| is independent of \verb|u| and both Views can be used as many time as needed.
+
+The very nice properties of Views are important because they increase the possible use cases.
+For example Scala Views support mutable collections: by creating a View on an underlying mutable HashMap, the programmer can create a view over his data as on can do in SQL where as the underlying data change views are always up to date accordingly.
+
+\begin{lstlisting}
+import collection.mutable.HashMap
+val m = HashMap((1,2))
+val v = m.view.map(case (x,y) => x+y)
+v.toArray // Array(3)
+v.sum // 3
+m += ((3,4))
+v.toArray // Array(7, 3)
+v.sum // 10
+\end{lstlisting}
 
 \section{Extensibility}
 \label{sec:ext}
@@ -244,6 +245,7 @@ The second design decision is the structure of the class hierarchy for our Views
 \lipsum[6]
 
 \section{Conclusion}
+% TODO: provide source code (tagged commit)
 % future work, what's next?
 \lipsum[7]
 
