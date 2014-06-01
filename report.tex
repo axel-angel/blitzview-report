@@ -217,16 +217,37 @@ Here is the structure of the objects hierarchy for our Views:
 A second important design choice we made is to use ScalaBlitz\footnote{Homepage: http://scala-blitz.github.io/} for the actual computations.
 This library offers first-class collections in terms of performance because it was designed for efficiency by using parallelism and specialized code to avoid unnecessary boxing.
 Some novel ideas developed in a paper \cite{scala-parallel} such as {\it work stealing} are implemented in this library.
-We won't cover the details of the internal algorithms but suffices it to say the computation are dynamically dispatched among the processors according to the programmer policy (the context).
+We won't cover the details of the internal algorithms but suffices it to say the computation are dynamically dispatched among the processors according to the programmer policy.
 
 The library itself provides the usual high-level operations on the major collections we need (\verb|Array|, \verb|Range|, \verb|Map| and \verb|Set|).
 Although we could have used multiple calls for transformers then reducers, we decided to augment ScalaBlitz with a new method (\verb|mapFilterReduce|) that we used to implement our internal methods (such as \verb|aggInternal|).
 This new function combines a \verb|flatMap| (map and reduce at once) and a general \verb|fold| in a single step.
 In practice, that means folding a View only require a single iteration over the underlying collection, each element is only used once
 This property stays true even as the number of transformers increase, this won't be true for regular collection transformers without optimisation.
-Moreover, in our design the programmer gains parallelism for free, this is fully integrated by the use of Scala Blitz whose algorithm can be configured (by importing some careful chosen \verb|implicit|s).
+Moreover, in our design the programmer gains parallelism for free, this is fully integrated by the use of Scala Blitz whose algorithm can be configured: by importing some careful chosen \verb|implicit|s (which form the {\it context}).
 
 % implicit extension: ext-method, evidence
+An interesting part of Scala API design contains implicits methods or values \cite{scala-implicits}.
+They can help to augment classes of certain shapes with more operations and sometimes they can provide a way to construct values given a number of possible underlying representation.
+We will now show how we used both of these two mechanisms to design a fluent and powerful API for the programmer.
+The first type augments specific type shape is referred as {\it implicit-extensions} and the second type where the we construct a class based on the representation is referred as {\it implicit-evidence} (like a proof).
+
+In our design implicit-extensions are used to allows the programmer to flatten a View, by just calling \verb|flatten| on it.
+Even though there is no such method anywhere in our public API, the programmer can call it when it makes sense to do so.
+The requirement is that the View contains itself Views inside and as such there is no particular class to represent this, it's just a plain \verb|BlitzView[B]| where \verb|B| is the type of the elements.
+In this case \verb|B| has a special shape: B = \verb|BlitzView[C]|, and the implicit-extension kicks when the user calls \verb|flatten|.
+The Scala compiler searches for an implicit conversion then, provided the requirements are satisfied, it's applied behind the scene to produce what we designed: a special hidden class that has the \verb|flatten| method, in our case \verb|ViewWithFlatten|.
+To implement such implicit conversion we need an implicit method that specifies the constraint and the conversion (see \verb|addFlatten|).
+Then the call to \verb|flatten| (now on \verb|ViewWithFlatten|) returns a special View instance that concatenates all its inner Views, in our case \verb|BlitzViewFlattenVs|.
+
+The second part with implicit-evidence is used to create Views, that happens when the programmer calls \verb|bview| on any supported collection.
+We support an interesting subset of Scala Blitz collections (see above) but we decided to evict \verb|List|s as there cannot be used efficiently in parallel context and it's easy for users to convert them to Array.
+We created a ``proof-performer'' that given a suitable evidence can convert a collection to a View, here the evidence is an implicit value (of type \verb|IsViewable|).
+The ``proof-performer'' is an implicit conversion, called \verb|toViewable|.
+There is at least one evidence per collection we support, each requires an implicit Scala Blitz context (to decide how to parallelize the collection) and some require an implicit \verb|ClassTag| (to decide how to pack in \verb|Array|s)
+The ``proof-performer'' given a proof returns an ephemeral instance of \verb|Viewable| whose sole purpose is to augment the collection with the \verb|bview| method.
+In practice our ``proof-performer'' is called only when the \verb|bview| method is itself called, thus the class \verb|Viewable| is only an internal detail of our implementation.
+
 
 \section{Usability}
 % external trait, interface
