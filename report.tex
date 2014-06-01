@@ -248,17 +248,19 @@ There is at least one evidence per collection we support, each requires an impli
 The ``proof-performer'' given a proof returns an ephemeral instance of \verb|Viewable| whose sole purpose is to augment the collection with the \verb|bview| method.
 In practice our ``proof-performer'' is called only when the \verb|bview| method is itself called, thus the class \verb|Viewable| is only an internal detail of our implementation.
 
-
 \section{Usability}
+We now talk about the programmer perspective when using our View implementation: how to create Views, how usual operations are performed and the extend of possibilities with our prototype.
 % external trait, interface
 
-Let's take an example to illustrate how one can use Views:
+Let's first take an example to illustrate the creation and use of Views:
 
 \begin{lstlisting}
 val xs = (0 to 10).toArray
 val v = xs.bview
 val u = v.map(_ + 10)
 \end{lstlisting}
+
+The users already familiar with Scala Views will notice the only difference is \verb|bview| instead of \verb|view|.
 
 The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the proxies, here \verb|v| or \verb|u|.
 Moreover \verb|u| is independent of \verb|u| and both Views can be used as many time as needed.
