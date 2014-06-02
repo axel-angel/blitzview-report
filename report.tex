@@ -241,11 +241,11 @@ To implement such implicit conversion we need an implicit method that specifies 
 Then the call to \verb|flatten| (now on \verb|ViewWithFlatten|) returns a special View instance that concatenates all its inner Views, in our case \verb|BlitzViewFlattenVs|.
 
 The second part with implicit-evidence is used to create Views, that happens when the programmer calls \verb|bview| on any supported collection.
-We support an interesting subset of Scala Blitz collections (see above) but we decided to evict \verb|List|s as there cannot be used efficiently in parallel context and it's easy for users to convert them to Array.
+We support an interesting subset of Scala Blitz collections (see above) but we decided to evict \verb|List|s because they cannot be used efficiently in parallel context and it's easy for users to convert them to \verb|Array| anyway.
 We created a ``proof-performer'' that given a suitable evidence can convert a collection to a View, here the evidence is an implicit value (of type \verb|IsViewable|).
 The ``proof-performer'' is an implicit conversion, called \verb|toViewable|.
-There is at least one evidence per collection we support, each requires an implicit Scala Blitz context (to decide how to parallelize the collection) and some require an implicit \verb|ClassTag| (to decide how to pack in \verb|Array|s)
-The ``proof-performer'' given a proof returns an ephemeral instance of \verb|Viewable| whose sole purpose is to augment the collection with the \verb|bview| method.
+There is at least one evidence per collection we support, each requires an implicit Scala Blitz context (to decide how to parallelize the collection) and some require an implicit \verb|ClassTag| (to decide how to pack in \verb|Array|s).
+When applied, the ``proof-performer'' returns an ephemeral instance of \verb|Viewable| whose sole purpose is to augment the collection with the \verb|bview| method.
 In practice our ``proof-performer'' is called only when the \verb|bview| method is itself called, thus the class \verb|Viewable| is only an internal detail of our implementation.
 
 \section{Usability}
@@ -260,13 +260,15 @@ val v = xs.bview
 val u = v.map(_ + 10)
 \end{lstlisting}
 
-The users already familiar with Scala Views will notice the only difference is \verb|bview| instead of \verb|view|.
+The user already familiar with Scala built-in Views will notice the similarity: the only difference is \verb|bview| instead of \verb|view|.
+One needs to import our package: \verb|collection.views.Scope._| and a Scala Blitz context\footnote{For example {\tt par.Scheduler.Implicits.sequential}}.
 
-The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the proxies, here \verb|v| or \verb|u|.
-Moreover \verb|u| is independent of \verb|u| and both Views can be used as many time as needed.
+The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the Views, here \verb|v| or \verb|u|.
+Moreover \verb|u| is independent of \verb|u| and both can be used as many time as needed.
 
 The very nice properties of Views are important because they increase the possible use cases.
-For example Scala Views support mutable collections: by creating a View on an underlying mutable HashMap, the programmer can create a view over his data as on can do in SQL where as the underlying data change views are always up to date accordingly.
+For example Views can be used with mutable collections (without any special treatment): just create a View on an underlying mutable HashMap for example, this can be seen as a view in SQL, over any table (collection) where the View is always synchronized with the underlying data changes.
+In our prototype, the View stays up to date because the computation are always done from scratch each time.
 
 \begin{lstlisting}
 import collection.mutable.HashMap
@@ -279,8 +281,26 @@ v.toArray // Array(7, 3)
 v.sum // 10
 \end{lstlisting}
 
+Let's take a concrete example, let say we have a collection of departments, each containing people.
+We want to compute the ratio of people having certain properties, like people over a certain age union\footnote{Note that in our example we use $++$ which counts duplicates twice} people whose name begins with an A.
+
+\begin{lstlisting}
+case class Person(n: String, a: Int)
+// xs: MSet[(String, MSet[Person])]
+val v = xs.map(_._2.bview).bview.flatten
+val vf = v.filter(_.a > 30)
+      ++ v.filter(_.n[0] == 'A')
+vf.size / v.size
+\end{lstlisting}
+
+There are multiple remarks necessary to understand the purpose of this code.
+First we used \verb|MSet|, a mutable \verb|Set| so we can modify the collection as the number of people come and depart.
+Second we explicitly require the programmer to convert inner collections to Views, necessary if the user wants to \verb|flatten| the structure, this is to avoid unnecessary work (for example when the programmer does not need to use View inside) and to avoid problematic implicit conversions (some conversions change the type which wouldn't be desirable all the time).
+Third there is a major difference with the built-in Scala Views shown here: \verb|flatten| does return a View which inner Views are flattened, that means the \verb|flatten| operation keeps our non-strict semantic, all other operations following it (here \verb|size|) are on the always-synchronized Views.
+The programmer can continue to update the \verb|MSet| and still use \verb|v| and \verb|vf| to get the desired result.
+
 Scala Blitz offers different schedulers for parallelism based on work-stealing such as \verb|Sequential| (no parallelism), \verb|ForkJoin| (kernel pool) and even the programmer can create new ones.
-The scheduler is an implicit that can be imported or explicitly specified to the View methods.
+The scheduler is an implicit that can be imported or explicitly passed to the methods of our Views.
 
 \section{Extensibility}
 \label{sec:ext}
