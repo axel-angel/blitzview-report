@@ -302,10 +302,43 @@ The programmer can continue to update the \verb|MSet| and still use \verb|v| and
 Scala Blitz offers different schedulers for parallelism based on work-stealing such as \verb|Sequential| (no parallelism), \verb|ForkJoin| (kernel pool) and even the programmer can create new ones.
 The scheduler is an implicit that can be imported or explicitly passed to the methods of our Views.
 
+% TODO: maybe give an example of ForkJoin? Refer to example to create scheduler?
+% other examples? Other subject of usability?
+
 \section{Extensibility}
 \label{sec:ext}
+We now present how a programmer can extend our hierarchy to create new implementation or new classes and how well it is integrated seamlessly.
+
 % internal trait, how to extend, aggInternal, BlitzViewImpl
-\lipsum[6]
+The programmer can create a new class under \verb|BlitzViewImpl| that implements a certain shape of Views.
+The advantage of creating a class that inherit our implementation is there are only two methods to implement:
+\begin{description}
+    \item[{\tt >\,>}:] this method must save the provided transformer into its state, depending on the case it should propagate this to the children Views.
+    \item[{\tt aggInternal}:] this method is responsible for the application of the transformers followed by the folding.
+        This method is called by all others in the public API, this allowed us to keep children classes very thin where most of the implementation resides in the common heritage (\verb|BlitzViewImpl|).
+\end{description}
+Then to use it, the programmer can create a new implicit-extension if this should be used for certain shape of Views.
+
+We take a toy example: let's implement a View that contains a single element: \verb|BlitzViewS|\footnote{We provide this implementation in the code repository}.
+We use \verb|BlitzViewC| as code base, it has: a hidden underlying type \verb|A| (for its source), a transformers stack \verb|transform| and now we need to store a single element \verb|x| (instead of a collection \verb|xs|).
+Our implementation of \verb|>>| stays the same whereas \verb|aggInternal| needs to only apply the transform on \verb|op| (as usual) but on the single element to return it (we don't need to fold here).
+The trick here is to provide an empty \verb|ResultCell| to our folder second argument (it plays the role of an {\it identity} element).
+
+We can now create either an implicit-evidence for the singleton type, for example an Int:
+\begin{lstlisting}
+import collection.views.ViewTransforms._
+implicit def intIsViewable =
+  new isViewable[Int, Int] {
+    override apply(i: Int) =
+      new BlitzViewS[Int] {
+        type A = Int
+        val x = i
+        def transform = new Identity()
+      }
+  }
+\end{lstlisting}
+The programmer can now write: \verb|5.bview| as expected.
+There is a similar but more interesting example of implementation for \verb|Option| in \verb|BlitzViewO|, it can be \verb|flatten| as for regular collections.
 
 \section{Conclusion}
 % TODO: provide source code (tagged commit)
