@@ -363,12 +363,29 @@ implicit def intIsViewable =
   }
 \end{lstlisting}
 The programmer can now write: \verb|5.bview| as expected.
-There is a similar but more interesting example of implementation for \verb|Option| in \verb|BlitzViewO|, it can be \verb|flatten| as for regular collections.
+There is an other similar implementation, provided as a more interesting example, for \verb|Option| in \verb|BlitzViewO|, this allows the programmer to \verb|flatten| \verb|BlitzView[Option[T]]| like with regular collections.
 
 \section{Conclusion}
 % TODO: provide source code (tagged commit)
+Views are a powerful concepts that can improve the efficiency and productivity when they are well implemented.
+The programmer can apply multiple transformers consecutively, reuse and pass around the intermediate Views, fold them multiple times.
+All these operations are very efficient because we use non-strictness, optional and configurable parallelism.
+We limited the scope of available operations (transformers and folders) on purpose to the ones that can be efficiently implemented.
+This may seem very restrictive but most of the usual methods on collections are still offered, moreover the programmer can always switch back to regular collections and call whatever he wanted, may it may \verb|permutations| or \verb|dropWhile|.
+In our current prototype these methods were not implemented due to the reasons above but this may change in the future, more easily than built-in Scala Views.
+Due to the fact our prototype is a separate library, it can make progress on its own, be updated more regularly and we avoid the problem of the built-in packages: even with an old version of Scala, one can use our prototype by just importing it.
+
+An other important aspect of libraries is the public part, the methods available to the final programmer.
+Scala Views decided to stick with the collections API but it was not designed for non-strict Views, it resulted in certain undesirable behavior and unnecessary problems.
+The other decision of Scala Views, being separated from Parallel Collection, created an other depth of confusion how they can or not work together.
+% design is important, stay long and errors are regretted later
+% especially if they are built into the language (cannot be removed)
+One major insight is that generally APIs cannot be changed unless breaking most of the programmer code, and now Views decided to use the Scala collections API without built-in parallelism.
+The extent of the API problem is even wider than before but hopefully there are multiple ways to improve the situation: changing the public API and breaking code (not acceptable for Scala), or better creating standalone libraries that provide better APIs by learning from the errors of the past design.
+
+The prototype we presented here is a design that overcome most of the difficulties that current Views suffer: standalone and suitable API, lightweight wrappers in a small codebase and configurable parallelism (which does not depend deeply on \verb|Scala Blitz|).
 % future work, what's next?
-\lipsum[7]
+
 
 \bibliography{report}{}
 \bibliographystyle{plain}
