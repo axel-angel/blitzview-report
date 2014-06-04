@@ -170,12 +170,15 @@ val xs = 0 to 3
 xs.permutations.toArray
 // correct result
 xs.view.permutations.toArray
-// UnsupportedOperationException
+// correct result wrapper in inner Views
+\end{lstlisting}
 %thats not true!
 %xs.view.permutations.toArray
 %res1: Array[scala.collection.SeqView[Int,scala.collection.immutable.IndexedSeq[Int]]] = Array(SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...))
 %and internal views are correct
-\end{lstlisting}
+
+The programmer may expect a \verb|Array[Array[Int]]| with the same type as the regular collection but here Views was decided to return \verb|Array[View[Int]]| instead, we consider this is an unexpected behavior: he needs to use \verb|map(_.toArray)| which is neither non-strict neither parallelized.
+% could have chosen example: xs.view.par.permutations.foldLeft
 
 There exists other operations that doesn't play nice when they are used on Views and this is a problem for programmer who expect the least surprise.
 % flatten -> list
