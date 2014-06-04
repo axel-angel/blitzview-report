@@ -19,3 +19,5 @@ report.aux : report.tex
 report.bib : report.tex
 	$(TEX) report.tex
 
+inotify: all
+	while true; do inotifywait -e modify *.tex *.bib; make; done
