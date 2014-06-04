@@ -78,39 +78,39 @@ They are more in accord within the Scala environment than the Java collections, 
 
 A {\it View} in Scala is a non-strict version of some collection set.
 {\it Non-strictness} here is a mean to postpone computations over a collection until the final result is actually needed, this type of view is called a proxy.
-The View is said to be {\it forced} when the postponed computations need to be performed over all the elements % at the current moment?
+The View is said to be {\it forced} when the postponed computations need to be performed over all the elements. % at the current moment?
 A View captures the operations that are postponed over its inner collection in $O(t)$ memory and stacks them to provide efficient computation in a single pass over the collection $O(n)$, where $t$ is the number of transformers and $n$ the number of elements.
 %not actually true, you have memory footprint at least linear on numberf of postponed operations.
 %I'd say about memory footprint. eg col.map(_).map(_).sum creates linear-sized intermediate collections, while col.view.map(_).map(_).sum has linear operational footprint.
 In practice this is used when multiple operations, such as multiple \verb|map| and \verb|filter|, are called consecutively.
 In this case, when the programmer uses regular collections, linear-sized $O(n)$ intermediate collections are generated whereas the overhead of Views is only proportional to the number of transformer operations $O(t)$, generally $t << n$.
 In our design, Views are reusable because they are {\it immutable}, and performing a new operation actually returns a new View where all previous operations are captured along the new one.
-Immutability means our View internal state never changes, all versions can be reused independently (as we will show later) and what's more important is Views does not dependent whether the underlying collection is mutable or not.
+Immutability means our View's internal state never changes, all versions can be reused independently (as we will show later) and what's more important is that Views do not depend on whether the underlying collection is mutable or not.
 %I'd clear what immutability means: the underlying collection can be mutable, but view can be safely reused. So I'd use 'reusable' instead of immutable, as this is actually what I'd want.
-Immutability greatly simplifies the implementation and open new possibilities for the programmer to combine and reuse Views in his code.
+Immutability greatly simplifies the implementation and opens new possibilities for the programmer to combine and reuse Views in his code.
 
 Therefore a View allows programmers to use special optimisations such as merging these operations to compute them all at once for each element of the inner collection.
 As the operations are done element by element, we can split the inner collections into a dynamic number of chunks and compute the operations in parallel depending on the number of cores of the computer.
 %this is actually a limititation as we limit which operations can be performed. I'd say this clearly % TODO: ???
 
-The design of the Views API is primordial because it can greatly limit the optimisations thus influencing the efficiency of the computations, as far as deciding whether they can be done in parallel and not.
+The design of the Views API is primordial because it can greatly limit the optimisations, thus influencing the efficiency of the computations as far as deciding whether they can be done in parallel or not.
 There exists two types of operations over Views:
 \begin{description}
-    \item[Transformers:] These can be postponed and captured in the View without evaluating (forcing) the elements, eg: \verb|map| and \verb|filter|. Usually their type is \verb|[a] -> [b]|.
-    \item[Folders:] These are the last operations that actually force the View to be computed and in general returns a single element, eg: \verb|aggregate| and \verb|max|. Usually their type is \verb|[a] -> b|.
+    \item[Transformers:] These can be postponed and captured in the View without evaluating (forcing) the elements, e.\,g.: \verb|map| and \verb|filter|. Usually their type is \verb|[a] -> [b]|.
+    \item[Folders:] These are the last operations that actually force the View to be computed and in general return a single element, e.\,g.: \verb|aggregate| and \verb|max|. Usually their type is \verb|[a] -> b|.
 \end{description}
 In this work, we focused on a powerful subset of the actual Scala collections API to preserve the efficiency of the Views while providing very powerful and functional non-strict collections.
 
 \section{Previous works}
 Scala and its collection offer a large toolbox of functions taken from functional paradigm such as \verb|flatMap| and \verb|aggregate| in a object-oriented hierarchy of classes with common interfaces.
 This collection interface is declared in the parent class \verb|Traversable|\cite{scala-collections} which is inherited by multiple types of collection in order to provide a common API that operates uniformly on all these different structures transparently for the programmer: whatever he uses is a \verb|List|, an \verb|Array|, a \verb|Map|, a \verb|LinkedList| or any descent of these classes, they all share this common methods.
-The programmer has to learn and understand it once, then he can use his experience for any of these collections easily: it's intuitive and greatly increase the productivity.
-The built-in collections in Scala are strict in the sense all operations are directly computed because Scala is a strict language, although the programmer can specify the \verb|lazy| variable-keyword, this doesn't solve the problem optimally.
+The programmer has to learn and understand it once, then he can use his experience for any of these collections easily: it's intuitive and greatly increases the productivity.
+The built-in collections in Scala are strict in the sense that all operations are directly computed because Scala is a strict language, although the programmer can specify the \verb|lazy| variable-keyword, this doesn't solve the problem optimally.
 
 % scala views, broken
-Since Scala 2.8, the Views joined the built-in toolbox to offer non-strict collections using the common interface of collections.
-They allow to create a proxy over a collection that captures the operations on them until an operation force it.
-The purpose of the proxy is to change the evaluation strictness of the collections by handling the computation itself when it see fits.
+Since Scala 2.8, the Views have joined the built-in toolbox to offer non-strict collections using the common interface of collections.
+They allow to create a proxy over a collection that captures the operations on them until an operation forces their execution.
+The purpose of the proxy is to change the evaluation strictness of the collections by handling the computation itself when it sees fit.
 For example a call to \verb|flatMap| over a View returns immediately whereas over a strict collection this may take some time to return.
 This is done by implementing all methods of the collection interface in a way the operations are remembered and done when necessary
 The wrapper is kept to use non-strict operations then the programmer can force the conversion into a regular collection: this is done by unwrapping the proxy after the computations and filling a regular collection with the result.
