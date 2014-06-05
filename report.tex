@@ -349,12 +349,12 @@ The advantage of creating a class that inherit our implementation is there are o
     \item[{\tt aggInternal}:] this method is responsible for the application of the transformers followed by the folding.
         This method is called by all others in the public API, this allowed us to keep children classes very thin where most of the implementation resides in the common heritage (\verb|BlitzViewImpl|).
 \end{description}
-Then to use it, the programmer can create a new implicit-extension if this should be used for certain shape of Views.
+Then, to use it, the programmer can create a new implicit-extension if this should be used for certain shapes of Views.
 
 We take a toy example: let's implement a View that contains a single element: \verb|BlitzViewS|\footnote{We provide this implementation in the code repository}.
-We use \verb|BlitzViewC| as code base, it has: a hidden underlying type \verb|A| (for its source), a transformers stack \verb|transform| and now we need to store a single element \verb|x| (instead of a collection \verb|xs|).
+We use \verb|BlitzViewC| as code base, having a hidden underlying type \verb|A| (for its source) and a transformers stack \verb|transform|, and now we need to store a single element \verb|x| (instead of a collection \verb|xs|).
 Our implementation of \verb|>>| stays the same whereas \verb|aggInternal| needs to only apply the transform on \verb|op| (as usual) but on the single element to return it (we don't need to fold here).
-The trick here is to provide an empty \verb|ResultCell| to our folder second argument (it plays the role of an {\it identity}\/ element).
+The trick here is to pass an empty \verb|ResultCell| as our folder's second argument (it plays the role of an {\it identity}\/ element).
 
 We can now create either an implicit-evidence for the singleton type, for example an Int:
 \begin{lstlisting}
