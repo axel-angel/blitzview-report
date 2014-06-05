@@ -57,7 +57,7 @@
 }
 \lstset{language=scala, basicstyle=\ttfamily\scriptsize}
 
-\newcommand{\eg}{e.\,g.}
+\newcommand{\eg}{e.\,g.\ }
 
 \begin{document}
 \maketitle
@@ -102,8 +102,8 @@ As the operations are done element by element, we can split the inner collection
 The design of the Views API is primordial because it can greatly limit the optimisations, thus influencing the efficiency of the computations as far as deciding whether they can be done in parallel or not.
 There exists two types of operations over Views:
 \begin{description}
-    \item[Transformers:] These can be postponed and captured in the View without evaluating (forcing) the elements, \eg: \verb|map| and \verb|filter|. Usually their type is \verb|[a] -> [b]|.
-    \item[Folders:] These are the last operations that actually force the View to be computed and in general return a single element, \eg: \verb|aggregate| and \verb|max|. Usually their type is \verb|[a] -> b|.
+    \item[Transformers:] These can be postponed and captured in the View without evaluating (forcing) the elements, \eg \verb|map| and \verb|filter|. Usually their type is \verb|[a] -> [b]|.
+    \item[Folders:] These are the last operations that actually force the View to be computed and in general return a single element, \eg \verb|aggregate| and \verb|max|. Usually their type is \verb|[a] -> b|.
 \end{description}
 In this work, we focused on a powerful subset of the actual Scala collections API to preserve the efficiency of the Views while providing very powerful and functional non-strict collections.
 
@@ -135,17 +135,17 @@ The programmer applies the methods as usual, then he can call a method to conver
 
 % talk about java 8 streams, limitations/bad design? (adv: unboxed?)
 % (java: problem type dependent)
-Java 8 was recently released with a new toolbox dedicated to functional programming (\eg: lambda functions) and the new package Stream.
+Java 8 was recently released with a new toolbox dedicated to functional programming (\eg lambda functions) and the new package Stream.
 These concepts allow the programmer to finally manipulate concisely sequences with \verb|flatMap| and the similar functions well known in Scala.
 The concept of Stream in Java 8 is different of the Streams in Scala.
 The Java implementation called Stream is an implementation of non-strict Views, they follow the definition we gave earlier.
-Scala Streams are quite different, they represent infinite and non-strict sequences, they are usually defined recursively and leverage {\it memoization}\/ (\eg: the Fibonacci sequence).
+Scala Streams are quite different, they represent infinite and non-strict sequences, they are usually defined recursively and leverage {\it memoization}\/ (\eg the Fibonacci sequence).
 %can you rephrase?
 Moreover the Java Stream can be converted to a parallel variant as the Scala Views, the main difference is that Java implemented a specialized version only for Streams and the interface is very different than the usual Java collections.
 Java Stream and Scala Views have an important number of common methods such as \verb|flatMap|, \verb|find|, \verb|min|/\verb|max| and the like.
 They both wrap the inner structure and require the programmer to call specific methods to unwrap, such as \verb|toArray|, or when he calls a folding method.
 They both require to explicitly convert to non-strict versions and then to parallelized variants if needed.
-The main difference is that Java has severe limitations with return values depending on Generic types: this is visible for all variants of \verb|flatMap| whose name is postfixed by the type explicitly, \eg: \verb|flatMapToInt| and return a specialized type, \eg: \verb|IntStream|.
+The main difference is that Java has severe limitations with return values depending on Generic types: this is visible for all variants of \verb|flatMap| whose name is postfixed by the type explicitly, \eg \verb|flatMapToInt| and return a specialized type, \eg \verb|IntStream|.
 An important problem with Java Stream is the lack of {\it transparent referenceability}\footnote{An expression is said to be referentially transparent if it can be replaced with its value without changing the behavior of a program (Wikipedia).} and reusability.
 One case is after a terminal operation (Folders) on a Stream: it cannot be reused, it is consumed by the operation (side-effect) and can never be reused.
 Another case is when Streams are combined together: the programmer cannot use the same Stream twice in a row, for example with \verb|concat|.
@@ -211,7 +211,7 @@ In this work we propose an alternative implementation of Scala Views that solves
 
 % problem of inefficiency, why cannot implement certain?
 The first design decision we made is to create a new interface, a trait, that does not contain problematic methods.
-There are different types of such methods: some are inherently sequential (\eg: \verb|reduceRight|), some require forcing the View (\eg: \verb|ordered|), some are inefficient anyway (\eg: \verb|permutations|) and some are possible but trickier to implement (\eg: \verb|takeWhile|).
+There are different types of such methods: some are inherently sequential (\eg \verb|reduceRight|), some require forcing the View (\eg \verb|ordered|), some are inefficient anyway (\eg \verb|permutations|) and some are possible but trickier to implement (\eg \verb|takeWhile|).
 
 We focused our prototype on the most important ones:
 \begin{itemize}
@@ -281,7 +281,7 @@ When applied, the ``proof-performer'' returns an ephemeral instance of \verb|Vie
 In practice our ``proof-performer'' is called only when the \verb|bview| method itself is called, thus the class \verb|Viewable| is only an internal detail of our implementation.
 
 \section{Usability}
-We now talk about the programmer perspective when using our View implementation: how to create Views, how usual operations are performed and the extend of possibilities with our prototype.
+We now talk about the programmer's perspective when using our View implementation: how to create Views, how usual operations are performed and the extent of possibilities with our prototype.
 % external trait, interface
 
 Let's first take an example to illustrate the creation and use of Views:
@@ -293,7 +293,7 @@ val u = v.map(_ + 10)
 \end{lstlisting}
 
 The user already familiar with Scala built-in Views will notice the similarity: the only difference is \verb|bview| instead of \verb|view|.
-One needs to import our package: \verb|collection.views.Scope._| and a Scala Blitz context\footnote{\eg: {\tt par.Scheduler.Implicits.sequential}}.
+One needs to import our package: \verb|collection.views.Scope._| and a Scala Blitz context\footnote{\eg {\tt par.Scheduler.Implicits.sequential}}.
 
 The programmer has the guarantee \verb|xs| will never be affected by the actions he is performing on the Views, here \verb|v| or \verb|u|.
 Moreover \verb|u| is independent of \verb|u| and both can be used as many time as needed.
@@ -424,7 +424,7 @@ Our last proposition for improvement is macros.
 They were introduced recently, in Scala 2.10, to allow metaprogramming, writing code that generates code at compile-time without sacrificing modularity \cite{scala-macros}.
 Scala Blitz use them extensively to propagate types statically and work on unboxed types when possible, this has an important impact on performance.
 We could leverage macros in our prototype to pass statically more information to Scala Blitz so it can create specialized code, thus we would benefit from the maximal performance offered by its design.
-Furthermore we could use macros to simplify consecutive transformers by inspecting their code to merge them, \eg: \verb|map{_+1}.map{_+1}| into \verb|map{_+2}|.
+Furthermore we could use macros to simplify consecutive transformers by inspecting their code to merge them, \eg \verb|map{_+1}.map{_+1}| into \verb|map{_+2}|.
 Macros open up new dimensions of specialized optimization by code inspection.
 
 \appendix
