@@ -168,40 +168,40 @@ The choice of whether an operation is a transformer or a folder will depend on t
 The problem that interest us in this project was to overcome the limitations seen in the current implementation of Views.
 One such problem is due to the fact Views inherit from the whole collection API which contains all usual operations that were designed to work on strict and mostly on sequential structures.
 % permutations
-Although operations such as \verb|permutations| makes perfectly sense for the usual collections, these operations cannot be efficiently implemented without actually forcing the View.% without forcing the view
+Although operations such as \verb|permutations| and \verb|sorted| makes perfectly sense for the usual collections, these operations cannot be efficiently implemented without actually forcing the View.% without forcing the view
 Despite this fact, this kind of operations is implemented in Scala Views but unexpected results can happen sometimes leading to an exception, the surprised programmer should rather not use these methods at all. %they are implemented, but the implementation is inefficient what is surprising for most programmers(there's a method, but you'd better not use it)
 
 \begin{lstlisting}
-val xs = 0 to 3
-xs.permutations.toArray
-// correct result
-xs.view.permutations.toArray
-// correct result wrapper in inner Views
+xs.view.map{x => println(x); x}.sorted
+// each number is printed
+// it returns a View
 \end{lstlisting}
-%thats not true!
-%xs.view.permutations.toArray
-%res1: Array[scala.collection.SeqView[Int,scala.collection.immutable.IndexedSeq[Int]]] = Array(SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...), SeqViewC(...))
-%and internal views are correct
 
-The programmer may expect a \verb|Array[Array[Int]]| with the same type as the regular collection but here Views was decided to return \verb|Array[View[Int]]| instead, we consider this is an unexpected behavior: he needs to use \verb|map(_.toArray)| which is neither non-strict neither parallelized.
+The programmer may not expect the numbers to be printed now because he didn't requested any result yet.
+However \verb|sorted| is forcing the View behind the scene and create a new sorted View, this is an unexpected and unintuitive behavior.
+In fact, other operations share the same issue like \verb|groupBy|, \verb|intersect|, \verb|sortBy|, and the likes.
 % could have chosen example: xs.view.par.permutations.foldLeft
 
 There exists other operations that doesn't play nice when they are used on Views and this is a problem for programmer who expect the least surprise.
 % flatten -> list
 For example \verb|flatten| does not return a flatten View but a new List containing the result of the flattening, even if we use Views inside and outside, this operation should have been non-strict as well.
 
-Other important problems with Scala Views arise when we want to combine non-strictness of Views with parallelism of Par together.
-The following is permitted although one version doesn't make sense:
+Other important problems with Scala Views arise when we want to combine non-strictness with Par-parallelism.
+The following is permitted although they don't have the same intuitive behavior:
 
 \begin{lstlisting}
 val xs = (0 to 1000).par.view
 val ys = (0 to 1000).view.par
 \end{lstlisting}
 
-Which one is correct? Are they equivalent? In fact they are not equivalent, worse, the first version looses its parallelism and second looses its non-strictness.
+Which one is correct? Are they equivalent? In fact they are not, worse, the first looses its parallelism while second looses its non-strictness.
 %AFAIK: the first one will lose it's paralelism
-From these problems we can see there is a leak of coordination between the collection API and the way we can construct parallelized Views.
-Scala collections offer too many methods that cannot be efficiently implemented or that does not make sense in a non-strict context, and the use of both Views and Par together should be done in a unified way to avoid these problems.
+From these problems we can see there is a lack of coordination between these APIs.
+Scala collections offer too many methods that cannot be efficiently implemented or that does not make sense in a non-strict context.
+Moreover the combination of both Views and Par, should be done in a unified way to avoid these problems.
+We noted a similar bad interaction between Views and Stream in Scala, it would be better for the View API to disallow such uses.
+% don't have a valid example here, for me Stream.view.foldLeft is the same as
+% Stream.foldLeft they both never terminate.
 
 % use inherited collections API -> broken
 
