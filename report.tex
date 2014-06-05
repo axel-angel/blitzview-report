@@ -392,7 +392,7 @@ The prototype we presented here is a design that overcome most of the difficulti
 
 \subsection{Future work}
 % future work, what's next?
-Future work can start to expand the number of Views type, the available methods in the API, generalize to different parallel libraries and add smart memorization.
+Future work can start to expand the number of Views type, the available methods in the API, generalize to different parallel libraries, add smart memorization and use macro expansions aggressively.
 %improve the usability with more conversion facilities.
 
 Currently our prototype implements certain underlying type: \verb|C| (collections), \verb|VV| (concat two Views), \verb|FlattenVs| (flatten Views), \verb|S| (singleton), \verb|O| (\verb|Option|).
@@ -416,8 +416,15 @@ Our dependency is more explicit than possible and we could abstract away the inf
 % memoization/cache
 Our current prototype does not cache the result of the folders nor the folders.
 Memoization could be trivially added after transformer computation for immutable underlying collections at the expanse of linear $O(n)$ memory overhead for our Views and more complex codebase.
-For mutable underlying collections, this is tricker as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we can propagate a dirty bit in our Views.
-Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought.
+With mutable underlying collections, this is tricker as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we can propagate a dirty bit in our Views.
+Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought, this posed some issues in Scala Views because it is implemented (and not controllable).
+
+Our last proposition for improvement is macros.
+They were introduced recently, in Scala 2.10, to allow metaprogramming, writing code that generates code at compile-time without sacrificing modularity \cite{scala-macros}.
+Scala Blitz use them extensively to propagate types statically and work on unboxed types when possible, this has an important impact on performance.
+We could leverage macros in our prototype to pass statically more information to Scala Blitz so it can create specialized code, thus we would benefit from the maximal performance offered by its design.
+Furthermore we could use macros to simplify consecutive transformers by inspecting their code to merge them, \eg: \verb|map{_+1}.map{_+1}| into \verb|map{_+2}|.
+Macros open up new dimensions of specialized optimization by code inspection.
 
 \appendix
 \section{Source code}
@@ -429,6 +436,8 @@ We would like to thank Dmitry Petrashko for his continuous great support, Martin
 
 \bibliography{report}{}
 \bibliographystyle{plain}
+
+\nocite{scala-bitrot}
 
 
 \end{document}
