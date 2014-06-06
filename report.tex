@@ -379,17 +379,22 @@ All these operations are very efficient because we use non-strictness, optional 
 We limited the scope of available operations (transformers and folders) on purpose to the ones that can be efficiently implemented.
 This may seem very restrictive but most of the usual methods on collections are still offered, moreover the programmer can always switch back to regular collections and call whatever he wanted, may it be \verb|permutations| or \verb|dropWhile|.
 In our current prototype these methods were not implemented due to the reasons above but this may change in the future, more easily than built-in Scala Views.
-Due to the fact our prototype is a separate library, it can make progress on its own, be updated more regularly and we avoid the problem of the built-in packages: even with an old version of Scala, one can use our prototype by just importing it.
+Due to the fact that our prototype is a separate library, it can make progress on its own, be updated more regularly and we avoid the problem of built-in packages: even with an old version of Scala, one can use our prototype by just importing it.
 
 An other important aspect of libraries is the public part, the methods available to the final programmer.
 Scala Views decided to stick with the collections API but it was not designed for non-strict Views, it resulted in certain undesirable behavior and unnecessary problems.
-The other decision of Scala Views, being separated from Parallel Collection, created an other depth of confusion how they can or not work together.
+The other decision of Scala Views, being separated from Parallel Collection, created an other depth of confusion how they can or cannot work together.
+% ayekat rephrases:
+% Additionally, separating Scala Views from Parallel Collection has caused
+% additional confusion as it is often unclear whether they can or cannot work
+% together.
+%
 % design is important, stay long and errors are regretted later
 % especially if they are built into the language (cannot be removed)
-One major insight is that generally APIs cannot be changed unless breaking most of the programmer code, and now Views decided to use the Scala collections API without built-in parallelism.
+One major insight is that generally APIs cannot be changed without breaking most of the programmer code, and now Views decided to use the Scala collections API without built-in parallelism.
 The extent of the API problem is even wider than before but hopefully there are multiple ways to improve the situation: changing the public API and breaking code (not acceptable for Scala), or better creating standalone libraries that provide better APIs by learning from the errors of the past design.
 
-The prototype we presented here is a design that overcome most of the difficulties that current Views suffer: standalone and suitable API, lightweight wrappers in a small codebase and configurable parallelism (which does not depend deeply on Scala Blitz).
+The prototype we presented here is a design that overcomes most of the difficulties that current Views suffer: standalone and suitable API, lightweight wrappers in a small codebase and configurable parallelism (which does not depend deeply on Scala Blitz).
 
 \subsection{Future work}
 % future work, what's next?
@@ -397,18 +402,19 @@ Future work can start to expand the number of Views type, the available methods 
 %improve the usability with more conversion facilities.
 
 Currently our prototype implements certain underlying type: \verb|C| (collections), \verb|VV| (concat two Views), \verb|FlattenVs| (flatten Views), \verb|S| (singleton), \verb|O| (\verb|Option|).
-There is room for improvements by adding more types, for example: generators (functions that return the elements lazily).
+There is room for improvements by adding more types, for example generators (functions that return the elements lazily).
 % TODO: add more types?
 
 % more methods
-We implemented methods such as \verb|flatMap|, \verb|map|, \verb|filter|, etc and they are still other methods missing in our library like \verb|tail|, \verb|partition|, \verb|zip|, \verb|takeWhile| that may have efficient implementation in our model.
-Especially \verb|tail| that could be implemented with \verb|head| with a lazy a \verb|reverse| operation.
+We implemented methods such as \verb|flatMap|, \verb|map|, \verb|filter|, etc.\ and there are still other methods missing in our library like \verb|tail|, \verb|partition|, \verb|zip|, \verb|takeWhile| that may have efficient implementations in our model.
+Especially \verb|tail| that could be implemented with \verb|head| with a lazy \verb|reverse| operation.
 \verb|partition| and \verb|zip| can certainly be implemented with a \verb|map| followed by a special folder, the tricky part is the interaction of elements from multiple Views simultaneously.
-For methods like \verb|takeWhile|, the problem is tricky if we want an implementation that works efficiently in parallel, due to the fact chunks depend on neighbor results, it may be possible but it was not in the scope of your prototype.
+For methods like \verb|takeWhile|, the problem is tricky if we want an implementation that works efficiently in parallel, due to the fact that chunks depend on neighbor results, it may be possible but it was not in the scope of your prototype.
+% FIXME: "your"? not "our"?
 
 % other lib scala blitz
 As we said, our prototype use the parallelism of Scala Blitz by calling certain methods specialized to the underlying collections.
-Our dependency is more explicit than possible and we could abstract away the information necessary to Scala Blitz to avoid this issue\footnote{We don't store the {\tt Scheduler} because it proved to be a mistake in other libraries, thus for now the signatures depend on it}.
+Our dependency is more explicit than possible and we could abstract away the information necessary to Scala Blitz to avoid this issue\footnote{We don't store the {\tt Scheduler} because it proved to be a mistake in other libraries, thus for now the signatures depend on it.}.
 
 % more conversions
 %For now we ask the programmer to call \verb|bview| on collections and inner elements for \verb|flatten|, which requires a \verb|map| explicitly.
@@ -417,8 +423,8 @@ Our dependency is more explicit than possible and we could abstract away the inf
 % memoization/cache
 Our current prototype does not cache the result of the folders nor the folders.
 Memoization could be trivially added after transformer computation for immutable underlying collections at the expanse of linear $O(n)$ memory overhead for our Views and more complex codebase.
-With mutable underlying collections, this is tricker as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we can propagate a dirty bit in our Views.
-Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought, this posed some issues in Scala Views because it is implemented (and not controllable).
+With mutable underlying collections, this is trickier as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we can propagate a dirty bit in our Views.
+Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought; this posed some issues in Scala Views because it is implemented (and not controllable).
 
 Our last proposition for improvement is macros.
 They were introduced recently, in Scala 2.10, to allow metaprogramming, writing code that generates code at compile-time without sacrificing modularity \cite{scala-macros}.
@@ -432,7 +438,7 @@ Macros open up new dimensions of specialized optimization by code inspection.
 % TODO: provide source code (tagged commit)
 The prototype is available on GitHub under the \verb|wip-view| branch, commit XXX:
 \url{https://github.com/axel-angel/scala-blitz/tree/wip-view}.
-We would like to thank Dmitry Petrashko for his continuous great support, Martin Takeya for proof-reading, Martin Odersky and the LAMP laboratory for their inspiring and great researches.
+We would like to thank Dmitry Petrashko for his continuous great support, Martin Weber for proof-reading, Martin Odersky and the LAMP laboratory for their inspiring and great researches.
 
 
 \bibliography{report}{}
