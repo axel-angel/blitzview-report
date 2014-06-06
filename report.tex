@@ -73,6 +73,7 @@ We present the library API design, implementation and how programmers can use an
 \end{abstract}
 
 \section{Introduction}
+\label{sec:intro}
 % subject of the work
 % scala (powerful, fast-moving lang
 % standard collections, non-strict and views
@@ -107,7 +108,12 @@ There exists two types of operations over Views:
 \end{description}
 In this work, we focused on a powerful subset of the actual Scala collections API to preserve the efficiency of the Views while providing very powerful and functional non-strict collections.
 
+We begin in section \ref{sec:previous} by showing what was done in the past, we explain what views are in \ref{sec:views}, we then describe our design in section \ref{sec:design}.
+We continue by demonstrating how our Views are used in section \ref{sec:usability} and how they can be extended in section \ref{sec:ext}.
+Finally we conclude in section \ref{sec:conclusion} with the source code in appendix \ref{sec:source}.
+
 \section{Previous works}
+\label{sec:previous}
 Scala and its collection offer a large toolbox of functions taken from functional paradigm such as \verb|flatMap| and \verb|aggregate| in a object-oriented hierarchy of classes with common interfaces.
 This collection interface is declared in the parent class \verb|Traversable|\cite{scala-collections} which is inherited by multiple types of collection in order to provide a common API that operates uniformly on all these different structures transparently for the programmer: whatever he uses is a \verb|List|, an \verb|Array|, a \verb|Map|, a \verb|LinkedList| or any descent of these classes, they all share this common methods.
 The programmer has to learn and understand it once, then he can use his experience for any of these collections easily: it's intuitive and greatly increases the productivity.
@@ -122,7 +128,7 @@ This is done by implementing all methods of the collection interface in a way th
 The wrapper is kept to use non-strict operations. Later, then the programmer can force the conversion into a regular collection: this is done by unwrapping the proxy after the computations and filling a regular collection with the result.
 This design decision has great advantages when it comes to people experienced with Scala collections because there is no external difference between them.
 Unfortunately it has two important costs for Scala in terms of the implementation and for the programmer who expect consistent and efficiently results.
-We will develop these aspects in the section and how we approached differently the problem.
+We will develop these aspects in section \ref{sec:views} and how we approached differently the problem.
 %which section?
 
 %are you speaking here about Scala parallel collections? It's better to state this clearly
@@ -153,6 +159,7 @@ Another case is when Streams are combined together: the programmer cannot use th
 This limits greatly the combinatorial power of Streams as one needs to create a new Stream for each new use whereas a single View can be reused alone and be part of other Views.
 
 \section{Views}
+\label{sec:views}
 We now define the properties of Views and describe the constraints we must satisfy in our API based on the experience of the previous works.
 
 % what operations/methods make sense?
@@ -207,6 +214,7 @@ We have detected a similar bad interaction between Views and Stream in Scala, it
 % use inherited collections API -> broken
 
 \section{Design}
+\label{sec:design}
 In this work we propose an alternative implementation of Scala Views that solves the issue of coordination between available methods and efficiency in non-strict and parallelized context.
 
 % problem of inefficiency, why cannot implement certain?
@@ -281,6 +289,7 @@ When applied, the ``proof-performer'' returns an ephemeral instance of \verb|Vie
 In practice our ``proof-performer'' is called only when the \verb|bview| method itself is called, thus the class \verb|Viewable| is only an internal detail of our implementation.
 
 \section{Usability}
+\label{sec:usability}
 We now talk about the programmer's perspective when using our View implementation: how to create Views, how usual operations are performed and the extent of possibilities with our prototype.
 % external trait, interface
 
@@ -373,6 +382,7 @@ The programmer can now write: \verb|5.bview| as expected.
 There is an other similar implementation, provided as a more interesting example, for \verb|Option| in \verb|BlitzViewO|, this allows the programmer to \verb|flatten| \verb|BlitzView[Option[T]]| like with regular collections.
 
 \section{Conclusion}
+\label{sec:conclusion}
 Views are a powerful concepts that can improve the efficiency and productivity when they are well implemented.
 The programmer can apply multiple transformers consecutively, reuse and pass around the intermediate Views, fold them multiple times.
 All these operations are very efficient because we use non-strictness, optional and configurable parallelism.
@@ -435,6 +445,7 @@ Macros open up new dimensions of specialized optimization by code inspection.
 
 \appendix
 \section{Source code}
+\label{sec:source}
 % TODO: provide source code (tagged commit)
 The prototype is available on GitHub under the \verb|wip-view| branch, commit XXX:
 \url{https://github.com/axel-angel/scala-blitz/tree/wip-view}.
