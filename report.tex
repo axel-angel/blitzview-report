@@ -99,7 +99,8 @@ Immutability greatly simplifies the implementation and opens new possibilities f
 
 Therefore a View allows programmers to use special optimisations such as merging these operations to compute them all at once for each element of the inner collection.
 As the operations are done element by element, we can split the inner collections into a dynamic number of chunks and compute the operations in parallel depending on the number of cores of the computer.
-%this is actually a limititation as we limit which operations can be performed. I'd say this clearly % TODO: ???
+%this is actually a limititation as we limit which operations can be performed. I'd say this clearly
+% this is explained later
 
 The design of the Views API is primordial because it can greatly limit the optimisations, thus influencing the efficiency of the computations as far as deciding whether they can be done in parallel or not.
 There exists two types of operations over Views:
@@ -208,7 +209,7 @@ Which one is correct? Are they equivalent? In fact they are not, worse, the firs
 From these problems we can see there is a lack of coordination between these APIs.
 Scala collections offer too many methods that cannot be efficiently implemented or that do not make sense in a non-strict context.
 Moreover the combination of both Views and Par should be done in a unified way to avoid these problems.
-We have detected a similar bad interaction between Views and Stream in Scala, it would be better for the View API to disallow such uses.
+We have noticed a similar bad interaction between Views and Stream in Scala, it would be better for the View API to disallow such uses.
 % don't have a valid example here, for me Stream.view.foldLeft is the same as
 % Stream.foldLeft they both never terminate.
 
@@ -232,10 +233,10 @@ We focused our prototype on the most important ones:
 The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in our internal implementation; this is inspired by the work of Martin Odersky in a prototype \cite{martin-view-prototype} (inspired by Reducers of Rich Hickey\cite{hickey-reducers}). %which on it's own is inspired by reducers by Rich Hickey
 It represents a function from $A$ to $B$ where $A$ is contravariant and $B$ covariant.
 This trait is used to pipeline operations when we are folding: we first apply the transformers, then we apply the given folder (this is the purpose of the method \verb|fold|).
-The important feature of these transformers is that they are recursive: a transformer can contain another transformer and so on; this is the purpose of \verb|>>|.
-In our design, there are three types of transformers: \verb|Map|, which applies a function on each element, \verb|Filter|, which drops elements according to the given predicate function, and \verb|Identity|, used at the bottom of the stack.
+The important property of these transformers is that they are recursive: a transformer can contain another transformer and so on; this is done by \verb|>>|.
+In our design, there are three types of transformers: \verb|Map|, which applies a function on each element, \verb|Filter|, which drops elements according to the given predicate function, and \verb|Identity|, which is the identity transformer (this is used at the bottom of the stack).
 
-Here is the structure of the object hierarchy for our Views:
+Here is the hierarchy of classes for our design:
 \begin{description}
     \item[{\tt BlitzView}:] The top trait that describes the available operations (transformers and folders) on all Views.
         It contains all the methods we just discussed above.
