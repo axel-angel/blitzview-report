@@ -320,7 +320,7 @@ In our prototype, the View stays up to date because the computation is always do
 \begin{lstlisting}
 import collection.mutable.HashMap
 val m = HashMap((1,2))
-val v = m.view.map(case (x,y) => x+y)
+val v = m.bview.map{case (x,y) => x+y}
 v.toArray // Array(3)
 v.sum // 3
 m += ((3,4))
@@ -452,8 +452,8 @@ Macros open up new dimensions of specialized optimization by code inspection.
 \section{Source code}
 \label{sec:source}
 % TODO: provide source code (tagged commit)
-The prototype is available on GitHub under the \verb|wip-view| branch, commit XXX:
-\url{https://github.com/axel-angel/scala-blitz/tree/wip-view}.
+The prototype is available on GitHub, commit \verb|v0.1|:
+\url{https://github.com/axel-angel/scala-blitzview} (with code samples).
 We would like to thank Dmitry Petrashko for his continuous great support, Martin Weber for proof-reading, Martin Odersky and the LAMP laboratory for their inspiring and great researches.
 
 
