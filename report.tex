@@ -194,7 +194,8 @@ In fact, other operations share the same issue like \verb|groupBy|, \verb|inters
 
 There exist other operations that don't play nice when they are used on Views, and this is a problem for programmers who expect the least surprise.
 % flatten -> list
-For example \verb|flatten| does not return a flatten View but a new List containing the result of the flattening, even if we use Views inside and outside, this operation should have been non-strict as well.
+For example \verb|flatten| does not return a flatten View but a new List containing the result of the flattening, even if we use Views inside and outside.
+This operation should have been non-strict as well.
 
 Other important problems with Scala Views arise when we want to combine non-strictness with Par-parallelism.
 The following is permitted although it doesn't have the same intuitive behavior:
@@ -233,7 +234,7 @@ We focused our prototype on the most important ones:
 The transformers are represented by the trait \verb|ViewTransform[-A, +B]|, in our internal implementation; this is inspired by the work of Martin Odersky in a prototype \cite{martin-view-prototype} (inspired by Reducers of Rich Hickey\cite{hickey-reducers}). %which on it's own is inspired by reducers by Rich Hickey
 It represents a function from $A$ to $B$ where $A$ is contravariant and $B$ covariant.
 This trait is used to pipeline operations when we are folding: we first apply the transformers, then we apply the given folder (this is the purpose of the method \verb|fold|).
-The important property of these transformers is that they are recursive: a transformer can contain another transformer and so on; this is done by \verb|>>|.
+The important property of these transformers is that they are recursive: a transformer can contain another transformer and so on; this is done with \verb|>>|.
 In our design, there are three types of transformers: \verb|Map|, which applies a function on each element, \verb|Filter|, which drops elements according to the given predicate function, and \verb|Identity|, which is the identity transformer (this is used at the bottom of the stack).
 
 Here is the hierarchy of classes for our design:
@@ -242,15 +243,17 @@ Here is the hierarchy of classes for our design:
         It contains all the methods we just discussed above.
     \item[{\tt BlitzViewImpl}:] The trait below that contains most of our implementation.
         Anyone is free to create a new implementation next to it, see section\reff{sec:ext}.
-        This trait inherits \verb|BlitzView| and provides the common implementation of all methods for subclasses in terms of a method \verb|aggInternal|.
+        This trait inherits \verb|BlitzView| and provides the common implementation of all methods for subclasses in terms of the method \verb|genericInvoke|.
         The children classes then must only implement this method to inherit all operations of this design.
-    \item[{\tt BlitzViewC}:] The View that contains an underlying collection.
-        This is the class that is used as a proxy closest to a wrapped collection and the only one that actually captures operations in a stack.
+    \item[{\tt BlitzViewC}:] The View that contains a single underlying collection.
+        This is the class that is used as a proxy closest to a wrapped collection and the one that actually captures operations in a stack.
         It inherits \verb|BlitzViewImpl|.
     \item[{\tt BlitzViewVV}:] The View that concatenates two Views together.
-        This would be the result of \verb|++| on two Views.
+        When a new transformer is added, it is passed to the two inner Views.
+        This is the result of \verb|++| on two Views.
         It inherits \verb|BlitzViewImpl|.
     \item[{\tt BlitzViewFlattenVs}:] The View that contains a list of View and concatenates the elements together in a single flattened View.
+        When a new transformer is added, it is passed to every inner Views.
         It inherits \verb|BlitzViewImpl|.
 \end{description}
 
@@ -262,23 +265,24 @@ We won't cover the details of the internal algorithms but it suffices to say the
 This is the concept of {\it work stealing}, which is implemented in this library; more details can be found in recent papers \cite{scala-parallel}.
 
 The library itself provides the usual high-level operations on the major collections we need (\verb|Array|, \verb|Range|, \verb|Map| and \verb|Set|).
-Although we could have used multiple calls for transformers, then reducers, we decided to augment ScalaBlitz with a new method (\verb|mapFilterReduce|) that we used to implement our internal methods (such as \verb|aggInternal|).
-This new function combines a \verb|flatMap| (map and reduce at once) and a general \verb|fold| in a single step.
+Although we could have used multiple calls for transformers, then reducers, we decided to extend ScalaBlitz with a new method (\verb|mapFilterReduce|) that we used to implement our internal methods (such as \verb|genericInvoke|).
+This new function combines a \verb|flatMap| (map and flatten at once) and a general \verb|fold| in a single step.
 In practice, that means folding a View only require a single iteration over the underlying collection, each element is only used once.
 This property stays true even as the number of transformers increase, this won't be true for regular collection transformers without optimisation.
 Moreover, in our design the programmer gains parallelism for free, this is fully integrated by the use of Scala Blitz whose algorithm can be configured: by importing some careful chosen \verb|implicit|s (which form the {\it context}).
 
+\subsection{Implicits}
 % implicit extension: ext-method, evidence
-An interesting part of Scala API design contains implicits methods or values \cite{scala-implicits}.
+An interesting part of Scala API design consists of using implicits methods or values \cite{scala-implicits}.
 They can help to augment classes of certain shapes with more operations and sometimes they can provide a way to construct values given a number of possible underlying representations.
 We will now show how we used both of these two mechanisms to design a fluent and powerful API for the programmer.
-The first type augments specific type shape and is referred as {\it implicit-extensions}, while the second type, where we construct a class based on the representation, is referred as {\it implicit-evidence} (like a proof).
+The first type augments specific type shape and is referred as {\it implicit-extensions}, while the latter type, where we construct a class based on the representation, is referred as {\it implicit-evidence} (like a proof).
 
 In our design implicit-extensions are used to allows the programmer to flatten a View, by just calling \verb|flatten| on it.
 Even though there is no such method anywhere in our public API, the programmer can call it when it makes sense to do so.
-The requirement is that the View contains itself Views inside and as such there is no particular class to represent this, it's just a plain \verb|BlitzView[B]| where \verb|B| is the type of the elements.
-In this case \verb|B| has a special shape: B = \verb|BlitzView[C]|, and the implicit-extension is triggered when the user calls \verb|flatten|.
-The Scala compiler searches for an implicit conversion, then, provided the requirements are satisfied, it's applied behind the scene to produce what we designed: a special hidden class that has the \verb|flatten| method, in our case \verb|ViewWithFlatten|.
+The requirement is that the View contains itself Views inside and as such there is no particular class that provides \verb|flatten|, it's just a plain \verb|BlitzView[B]| where \verb|B| is the type of the elements.
+In this case \verb|B| has a special shape: \verb|B = BlitzView[C]|, and the implicit-extension is triggered when the user calls \verb|flatten|.
+The Scala compiler searches for an implicit conversion, then, provided the requirements are satisfied, it's applied automatically to produce what we designed: a special hidden class that has the \verb|flatten| method, in our case \verb|ViewWithFlatten|.
 To implement such implicit conversion we need an implicit method that specifies the constraint and the conversion (see \verb|addFlatten|).
 Then the call to \verb|flatten| (now on \verb|ViewWithFlatten|) returns a special View instance that concatenates all its inner Views, in our case \verb|BlitzViewFlattenVs|.
 
@@ -352,19 +356,19 @@ The scheduler is an implicit that can be imported or explicitly passed to the me
 \label{sec:ext}
 We now present how a programmer can extend our hierarchy to create new implementation or new classes and how well it is integrated seamlessly.
 
-% internal trait, how to extend, aggInternal, BlitzViewImpl
+% internal trait, how to extend, genericInvoke, BlitzViewImpl
 The programmer can create a new class under \verb|BlitzViewImpl| that implements a certain shape of Views.
 The advantage of creating a class that inherit our implementation is there are only two methods to implement:
 \begin{description}
     \item[{\tt >\,>}:] this method must save the provided transformer into its state, depending on the case it should propagate this to the children Views.
-    \item[{\tt aggInternal}:] this method is responsible for the application of the transformers followed by the folding.
+    \item[{\tt genericInvoke}:] this method is responsible for the application of the transformers followed by the folding.
         This method is called by all others in the public API, this allowed us to keep children classes very thin where most of the implementation resides in the common heritage (\verb|BlitzViewImpl|).
 \end{description}
 Then, to use it, the programmer can create a new implicit-extension if this should be used for certain shapes of Views.
 
 We take a toy example: let's implement a View that contains a single element: \verb|BlitzViewS|\footnote{We provide this implementation in the code repository}.
 We use \verb|BlitzViewC| as code base, having a hidden underlying type \verb|A| (for its source) and a transformers stack \verb|transform|, and now we need to store a single element \verb|x| (instead of a collection \verb|xs|).
-Our implementation of \verb|>>| stays the same whereas \verb|aggInternal| needs to only apply the transform on \verb|op| (as usual) but on the single element to return it (we don't need to fold here).
+Our implementation of \verb|>>| stays the same whereas \verb|genericInvoke| needs to only apply the transform on \verb|op| (as usual) but on the single element to return it (we don't need to fold here).
 The trick here is to pass an empty \verb|ResultCell| as our folder's second argument (it plays the role of an {\it identity} element).
 
 We can now create either an implicit-evidence for the singleton type, for example an Int:
@@ -383,6 +387,8 @@ implicit def intIsViewable =
 The programmer can now write: \verb|5.bview| as expected.
 There is an other similar implementation, provided as a more interesting example, for \verb|Option| in \verb|BlitzViewO|, this allows the programmer to \verb|flatten| \verb|BlitzView[Option[T]]| like with regular collections.
 
+Implicits allow the programmer to plug directly its own classes as first-citizens of our prototype without changing our prototype.
+
 \section{Conclusion}
 \label{sec:conclusion}
 Views are a powerful concepts that can improve the efficiency and productivity when they are well implemented.
@@ -390,7 +396,7 @@ The programmer can apply multiple transformers consecutively, reuse and pass aro
 All these operations are very efficient because we use non-strictness, optional and configurable parallelism.
 We limited the scope of available operations (transformers and folders) on purpose to the ones that can be efficiently implemented.
 This may seem very restrictive but most of the usual methods on collections are still offered, moreover the programmer can always switch back to regular collections and call whatever he wanted, may it be \verb|permutations| or \verb|dropWhile|.
-In our current prototype these methods were not implemented due to the reasons above but this may change in the future, more easily than built-in Scala Views.
+In our current prototype these methods were not implemented due to the reasons above but this may change in the future, as this is more easily done than for built-in Scala Views.
 Due to the fact that our prototype is a separate library, it can make progress on its own, be updated more regularly and we avoid the problem of built-in packages: even with an old version of Scala, one can use our prototype by just importing it.
 
 An other important aspect of libraries is the public part, the methods available to the final programmer.
@@ -402,9 +408,9 @@ Additionally, separating Scala Views from Parallel Collection has caused additio
 % design is important, stay long and errors are regretted later
 % especially if they are built into the language (cannot be removed)
 One major insight is that generally APIs cannot be changed without breaking most of the programmer code, and now Views decided to use the Scala collections API without built-in parallelism.
-The extent of the API problem is even wider than before but hopefully there are multiple ways to improve the situation: changing the public API and breaking code (not acceptable for Scala), or better creating standalone libraries that provide better APIs by learning from the errors of the past design.
+The extent of the API problem is even wider than before but hopefully there are multiple ways to improve the situation: changing the public API and breaking code (not acceptable for Scala), or by creating standalone libraries that provide better APIs by learning from the errors of the past designs.
 
-The prototype we presented here is a design that overcomes most of the difficulties that current Views suffer: standalone and suitable API, lightweight wrappers in a small codebase and configurable parallelism (which does not depend deeply on Scala Blitz).
+The prototype we presented here is a design that overcomes most of the difficulties that current Views suffer: standalone and suitable API, lightweight wrappers in a small codebase, configurable parallelism\footnote{Our prototype does depend on Scala Blitz but in such a way it's easily changeable.} and powerful extensibility using implicits.
 
 \subsection{Future work}
 % future work, what's next?
@@ -423,7 +429,7 @@ For methods like \verb|takeWhile|, the problem is tricky if we want an implement
 
 % other lib scala blitz
 As we said, our prototype use the parallelism of Scala Blitz by calling certain methods specialized to the underlying collections.
-Our dependency is more explicit than possible and we could abstract away the information necessary to Scala Blitz to avoid this issue\footnote{We don't store the {\tt Scheduler} because it proved to be a mistake in other libraries, thus for now the signatures depend on it.}.
+Our dependency is more explicit than possible and we could abstract away the information to avoid this issue\footnote{We could store the {\tt Scheduler} but it proved to be a mistake in other libraries, thus for now the signatures depend on it.}.
 
 % more conversions
 %For now we ask the programmer to call \verb|bview| on collections and inner elements for \verb|flatten|, which requires a \verb|map| explicitly.
@@ -432,8 +438,8 @@ Our dependency is more explicit than possible and we could abstract away the inf
 % memoization/cache
 Our current prototype does not cache the result of the folders nor the folders.
 Memoization could be trivially added after transformer computation for immutable underlying collections at the expanse of linear $O(n)$ memory overhead for our Views and more complex codebase.
-With mutable underlying collections, this is trickier as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we can propagate a dirty bit in our Views.
-Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought; this posed some issues in Scala Views because it is implemented (and not controllable).
+With mutable underlying collections, this is trickier as it can change anytime, there may exist ways to ask the underlying collection whether it changed, so we could propagate a dirty flag in our Views.
+Unfortunately this may not be possible, moreover it could add unforeseen issues to our prototype if not well thought\footnote{This posed some issues in Scala Views because it is not controllable by the programmer.}.
 
 Our last proposition for improvement is macros.
 They were introduced recently, in Scala 2.10, to allow metaprogramming, writing code that generates code at compile-time without sacrificing modularity \cite{scala-macros}.
