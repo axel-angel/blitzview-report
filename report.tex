@@ -64,7 +64,7 @@
 
 \begin{abstract}
 % 1/2 lines of desc
-Scala is a powerful language which currently provides a built-in implementation for non-strict views with some important shortcomings for the users such as unexpected and unintuitive behaviors.
+Scala is a powerful language which currently provides a built-in implementation for non-strict views with some important shortcomings for the users such as unexpected and unintuitive behavior.
 %it's not a separate library, but a deeply intergrated part of standrard one(you have .view operation on every collection), the fact that you're able to do good job without requirement to integrate so deep is your advantage.
 
 In this work we created a new library, based on Scala Blitz, to provide lightweight, non-strict and parallel-efficient collections.
@@ -83,7 +83,7 @@ Scala itself provides an important number of libraries, for example Scala collec
 They are more in accord within the Scala environment than the Java collections, moreover they provide the functional programming concepts like constructors.
 
 A {\it View}\/ in Scala is a non-strict version of some collection set.
-{\it Non-strictness}\/ here is a mean to postpone computations over a collection until the final result is actually needed, this type of view is called a proxy.
+{\it Non-strictness}\/ here is a mean to postpone computations over a collection until the final result is actually needed, this type of view is called a proxy. % "is a mean" != "means" ?
 The View is said to be {\it forced}\/ when the postponed computations need to be performed over all the elements. % at the current moment?
 A View captures the operations that are postponed over its inner collection in $O(t)$ memory and stacks them to provide efficient computation in a single pass over the collection $O(n)$, where $t$ is the number of transformers and $n$ the number of elements.
 %not actually true, you have memory footprint at least linear on numberf of postponed operations.
@@ -228,19 +228,19 @@ In our design, there are three types of transformers: \verb|Map|, which applies 
 
 Here is the structure of the object hierarchy for our Views:
 \begin{description}
-    \item[{\tt BlitzView}] The top trait that describes the available operations (transformers and folders) on all Views.
+    \item[{\tt BlitzView}:] The top trait that describes the available operations (transformers and folders) on all Views.
         It contains all the methods we just discussed above.
-    \item[{\tt BlitzViewImpl}] Contains the trait for our implementation.
+    \item[{\tt BlitzViewImpl}:] Contains the trait for our implementation.
         Anyone is free to create a new implementation next to it, see section~\ref{sec:ext}.
         This trait inherits \verb|BlitzView| and provides the common implementation of all methods for subclasses in terms of a method \verb|aggInternal|.
         The children classes then must only implement this method to inherit all operations of this design.
-    \item[{\tt BlitzViewC}] The View that contains an underlying collection.
+    \item[{\tt BlitzViewC}:] The View that contains an underlying collection.
         This is the class that is used as a proxy closest to a wrapped collection and the only one that actually captures operations in a stack.
         It inherits \verb|BlitzViewImpl|.
-    \item[{\tt BlitzViewVV}] The View that concatenates two Views together.
+    \item[{\tt BlitzViewVV}:] The View that concatenates two Views together.
         This would be the result of \verb|++| on two Views.
         It inherits \verb|BlitzViewImpl|.
-    \item[{\tt BlitzViewFlattenVs}] The View that contains a list of View and concatenates the elements together in a single flattened View.
+    \item[{\tt BlitzViewFlattenVs}:] The View that contains a list of View and concatenates the elements together in a single flattened View.
         It inherits \verb|BlitzViewImpl|.
 \end{description}
 
@@ -249,7 +249,7 @@ A second important design choice we made is to use ScalaBlitz\footnote{Homepage:
 %I'd add that paralelism isn't enforced, so one can either use parallel or sequential operations
 This library offers first-class collections in terms of performance because it was designed for efficiency by using parallelism and specialized code to avoid unnecessary boxing.
 We won't cover the details of the internal algorithms but it suffices to say the computations are dynamically spread among the workers according to the programmer policy.
-This is the concept of {\it work stealing}, which is implemented in this library, more details can be found in recent papers \cite{scala-parallel}.
+This is the concept of {\it work stealing}, which is implemented in this library; more details can be found in recent papers \cite{scala-parallel}.
 
 The library itself provides the usual high-level operations on the major collections we need (\verb|Array|, \verb|Range|, \verb|Map| and \verb|Set|).
 Although we could have used multiple calls for transformers, then reducers, we decided to augment ScalaBlitz with a new method (\verb|mapFilterReduce|) that we used to implement our internal methods (such as \verb|aggInternal|).
