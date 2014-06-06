@@ -58,6 +58,7 @@
 \lstset{language=scala, basicstyle=\ttfamily\scriptsize}
 
 \newcommand{\eg}{e.\,g.\ }
+\newcommand{\reff}[1]{~\ref{#1}}
 
 \begin{document}
 \maketitle
@@ -108,9 +109,9 @@ There exists two types of operations over Views:
 \end{description}
 In this work, we focused on a powerful subset of the actual Scala collections API to preserve the efficiency of the Views while providing very powerful and functional non-strict collections.
 
-We begin in section \ref{sec:previous} by showing what was done in the past, we explain what views are in \ref{sec:views}, we then describe our design in section \ref{sec:design}.
-We continue by demonstrating how our Views are used in section \ref{sec:usability} and how they can be extended in section \ref{sec:ext}.
-Finally we conclude in section \ref{sec:conclusion} with the source code in appendix \ref{sec:source}.
+We begin in section\reff{sec:previous} by showing what was done in the past, we explain what views are in\reff{sec:views}, we then describe our design in section\reff{sec:design}.
+We continue by demonstrating how our Views are used in section\reff{sec:usability} and how they can be extended in section\reff{sec:ext}.
+Finally we conclude in section\reff{sec:conclusion} with the source code in appendix\reff{sec:source}.
 
 \section{Previous works}
 \label{sec:previous}
@@ -128,7 +129,7 @@ This is done by implementing all methods of the collection interface in a way th
 The wrapper is kept to use non-strict operations. Later, then the programmer can force the conversion into a regular collection: this is done by unwrapping the proxy after the computations and filling a regular collection with the result.
 This design decision has great advantages when it comes to people experienced with Scala collections because there is no external difference between them.
 Unfortunately it has two important costs for Scala in terms of the implementation and for the programmer who expect consistent and efficiently results.
-We will develop these aspects in section \ref{sec:views} and how we approached differently the problem.
+We will develop these aspects in section\reff{sec:views} and how we approached differently the problem.
 %which section?
 
 %are you speaking here about Scala parallel collections? It's better to state this clearly
@@ -152,7 +153,7 @@ Java Stream and Scala Views have an important number of common methods such as \
 They both wrap the inner structure and require the programmer to call specific methods to unwrap, such as \verb|toArray|, or when he calls a folding method.
 They both require to explicitly convert to non-strict versions and then to parallelized variants if needed.
 The main difference is that Java has severe limitations with return values depending on Generic types: this is visible for all variants of \verb|flatMap| whose name is postfixed by the type explicitly, \eg \verb|flatMapToInt| and return a specialized type, \eg \verb|IntStream|.
-An important problem with Java Stream is the lack of {\it transparent referenceability}\footnote{An expression is said to be referentially transparent if it can be replaced with its value without changing the behavior of a program (Wikipedia).} and reusability.
+An important problem with Java Stream is the lack of {\it transparent referenceability}\footnote{An expression is said to be referentially transparent if it can be replaced with its value without changing the behavior of a program. -- Wikipedia} and reusability.
 One case is after a terminal operation (Folders) on a Stream: it cannot be reused, it is consumed by the operation (side-effect) and can never be reused.
 Another case is when Streams are combined together: the programmer cannot use the same Stream twice in a row, for example with \verb|concat|.
 % this is also true for combining: you can't use same Java Stream twice even in combining operations
@@ -239,7 +240,7 @@ Here is the structure of the object hierarchy for our Views:
     \item[{\tt BlitzView}:] The top trait that describes the available operations (transformers and folders) on all Views.
         It contains all the methods we just discussed above.
     \item[{\tt BlitzViewImpl}:] Contains the trait for our implementation.
-        Anyone is free to create a new implementation next to it, see section~\ref{sec:ext}.
+        Anyone is free to create a new implementation next to it, see section\reff{sec:ext}.
         This trait inherits \verb|BlitzView| and provides the common implementation of all methods for subclasses in terms of a method \verb|aggInternal|.
         The children classes then must only implement this method to inherit all operations of this design.
     \item[{\tt BlitzViewC}:] The View that contains an underlying collection.
