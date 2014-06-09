@@ -44,10 +44,16 @@
   morestring=[b]',
   morestring=[b]"""
 }
-\lstset{language=scala, basicstyle=\ttfamily\scriptsize}
-
 \newcommand{\eg}{e.\,g.\ }
 \newcommand{\reff}[1]{~\ref{#1}}
+
+\AtBeginSection[]
+  {
+     \begin{frame}<beamer>
+     \frametitle{Plan}
+     \tableofcontents[currentsection]
+     \end{frame}
+  }
 
 \begin{document}
 \begin{frame}
@@ -108,9 +114,287 @@
             \eg \verb|aggregate| and \verb|max|.
             Type \verb|[a] -> b|.
     \end{description}
+
+    We focused on a subset of operations (on purpose!)
+\end{frame}
+
+\section{Previous works}
+\begin{frame}
+    \frametitle{Based on existing ideas}
+    Learn from past works:
+    \begin{description}
+        \item[Scala Collections:] Lots of methods like {\tt flatMap} and data structures like {\tt List}, {\tt Array}, {\tt Map}, {\tt Set} with (im)mutable variants.
+            Strict.
+        \item[Scala Views:] Conversion from Scala Collections to Views, same interface. Immutable.
+            Non-strict.
+        \item[Java 8 Streams:] Like Scala Views, unlike Scala Streams. Non-strict. Semi-immutable (not transparent-referenceable\footnote{Can be replaced with its {\bf value} without changing the behavior}).
+    \end{description}
+\end{frame}
+
+\begin{frame}
+    \frametitle{What's good and what's not so good}
+    Comparisons:
+    \begin{description}
+        \item[Scala Collections:] $+$Lots of methods, $+$Strict, $-$Non-parallel\footnote{Require explicit conversion {\tt Par}};
+        \item[Scala Views:] $-$Lots of methods, $+$Non-strict, $-$Non-parallel\footnote{{\tt Par} has unexpected behavior};
+        \item[Java 8 Streams:] $+$OK methods $+$Non-strict $-$Non-parallel\footnote{Require explicit conversion: {\tt parallelStream}} $-$Limitations of Generics\footnote{One per type: {\tt flatMapTo*}} $-$Poor usability.
+    \end{description}
+\end{frame}
+
+\section{Design}
+\begin{frame}
+    \frametitle{Issues}
+    What's problematic:
+    \begin{itemize}
+        \item Scala common interface inherited from Collections;
+        \item Requiring explicit parallel conversion;
+        \item Scala unexpected behavior between Views and Par;
+        \item Java type and usability problems;
+        \item Built-in vs ``Hackability'': extension.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Solution}
+    {\tt BlitzView}, or how we solved them:
+    \begin{itemize}
+        \item Scala common interface inherited from Collections \\
+            $\Rightarrow$ Specific interface for Views
+        \item Requiring explicit parallel conversion \\
+        \item Scala unexpected behavior between Views and Par \\
+            $\Rightarrow$ Built-in configurable parallelism (on operations)
+        \item Java type and usability problems \\
+            $\Rightarrow$ Immutability and Scala type system
+        \item Built-in vs ``Hackability'': extension \\
+            $\Rightarrow$ Separate package and implicits conversions
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Problem of interface}
+    Scala common interface inherited from Collections\footnote{In fact {\tt Traversable}}:
+    \begin{lstlisting}
+    xs.view.map{x => println(x); x}.sorted
+    // each number is printed
+    // it returns a View
+    \end{lstlisting}
+    Other operations are {\bf forcing} like \verb|groupBy|, \verb|intersect|, \verb|sortBy| and the likes.
+    For example \verb|flatten| returns a {\bf List} (even with nested Views).
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Problem of parallelism}
+    Requiring explicit parallel conversion; \\
+    unexpected behavior between Views and Par:\\
+
+    \begin{lstlisting}
+    val xs = (0 to 1000).par.view
+    val ys = (0 to 1000).view.par
+    \end{lstlisting}
+
+    Which one is correct? Are they equivalent? In fact they are not, worse, the first loses its parallelism, while the second loses its non-strictness.
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Solution}
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+trait BlitzView[+B] { // some have [A >: B] for covariance
+  /* operators */
+  def ++/:::(ys: BlitzView[B]): BlitzView[B]
+  def ::(y: A): BlitzView[B]
+
+  /* methods (transformers): V -> V (hidden: map + filter) */
+  def flatMap[C, U](f: B => U)(implicit ctx: Scheduler, viewable: IsViewable[U, C]): BlitzView[C]
+
+  /* methods: V -> other array structure */
+  def toArray(implicit ct: ClassTag[A], ctx: Scheduler): Array[A]
+  def toList(implicit ctx: Scheduler): List[A]
+
+  /* methods: V -> V[constant type] */
+  def toInts/Doubles/...(implicit f: Numeric[A]): BlitzView[Int]
+
+  /* methods: V -> 1 (with Optional variants) */
+  def aggregate[R](z: => R)(op: (A, R) => R)(reducer: (R, R) => R)(implicit ctx: Scheduler): R
+  def reduce(op: (A, A) => A)(implicit ctx: Scheduler): A
+  def min/max(implicit ord: Ordering[A], ctx: Scheduler): A
+  def sum/product(implicit num: Numeric[A], ctx: Scheduler): A
+
+  /* methods: V -> 1[constant type] */
+  def size(implicit ctx: Scheduler): Int
+  def count/find/exists/forall(p: B => Boolean)(implicit ctx: Scheduler): Int
+}
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Remarks}
+    Properties:
+    \begin{itemize}
+        \item Sufficient powerful methods implemented (but no more\footnote{``less is more'' as some says})
+        \item Implicits to configure parallelism (ScalaBlitz\footnote{Homepage: http://scala-blitz.github.io/} {\tt Scheduler})
+        \item {\bf Modularity} using common implementation trait
+        \item {\bf Extensibility} using implicits (supported collections)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Modularity design}
+    OOP Hierarchy:
+    \begin{itemize}
+        \item BlitzView trait (interface)
+        \begin{itemize}
+            \item BlitzViewImpl trait (interface+implementations)
+             \\ subclasses implement {\tt >\,>} and {\tt genericInvoke}
+            \begin{itemize}
+                \item BlitzViewC(ollection)
+                \item BlitzViewVV(iews)
+                \item BlitzViewFlattenVs
+                \item BlitzViewO(ption)
+                \item BlitzViewS(ingleton)
+                \item (Open to new implementations)
+            \end{itemize}
+        \item (Open to new design)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Design Internals}
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+/** BlitzView implementation with a single source par Collection. */
+abstract class BlitzViewC[B] extends BlitzViewImpl[B] { self =>
+  type A // type of source list
+  val xs: Reducable[A] // source list
+  def transform: ViewTransform[A, B] // stack of transforms
+
+  override def >>[C](next: ViewTransform[B, C]) = new BlitzViewC[C] {
+    type A = self.A
+    val xs = self.xs
+    def transform = self.transform >> next
+  }
+
+  override def genericInvoke[R](op: (B, ResultCell[R]) => ResultCell[R]
+    , pstop: ResultCell[R] => Boolean)
+    (reducer: (R, R) => R)(implicit ctx: Scheduler): ResultCell[R] =
+  {
+    val stopper = ViewUtils.toStopper(pstop)_
+    xs.mapFilterReduce[R](transform.fold(op), stopper)(reducer)(ctx)
+  }
+}
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Design Internals}
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+trait ViewTransform[-A, +B] { self =>
+  type Fold[A, F] = (A, ResultCell[F]) => ResultCell[F]
+
+  def fold[F](g: Fold[B, F]): Fold[A, F]
+
+  def >>[C](next: ViewTransform[B, C]) = new ViewTransform[A, C] {
+    def fold[F](fd: Fold[C, F]): Fold[A, F] =
+        self.fold(next.fold(fd))
+  }
+}
+
+class Map[A, B](m: A => B) extends ViewTransform[A, B] {
+  def fold[F](fd: Fold[B, F]): Fold[A, F] =
+    (x, acc) => fd(m(x), acc)
+}
+
+class Filter[A](p: A => Boolean) extends ViewTransform[A, A] {
+  def fold[F](fd: Fold[A, F]): Fold[A, F] =
+    (x, acc) => if (p(x)) fd(x, acc) else acc
+}
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Extensibility design}
+    Different types of implicits:
+    \begin{description}
+        \item[Implicit-extension:] Automatic conversion to an extended ``proxy'' class under certain conditions.
+            Useful to add methods ``on-the-fly'' depending on type shape.
+            Our use-case: {\tt addFlatten}.
+        \item[Implicit-evidence:] An implicit conversion that requires an (implicit) evidence to.
+            One evidence per supported collection type.
+            Our use-case: {\tt bview}.
+    \end{description}
+    Without changing code: easy to add methods to our design, add new supported collections (and View type).
+    Disadvantage: less intuitive (``black-magic'' effect).
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Implicit-extension}
+    An example of our use-case:
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+  val v: BlitzView[BlitzView[Int]] =
+    Array[Option[Int]](Some(1), None).map{_.bview}
+  v.flatten // implicit-extension
+    \end{lstlisting}
+
+    Behind the scene:
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+  implicit def addFlatten[U, B[_] <: BlitzView[_], C[_] <: BlitzView[_]](view: B[C[U]])
+    = new ViewWithFlatten[U, B, C](view)
+
+  class ViewWithFlatten[U, B[_] <: BlitzView[_], C[_] <: BlitzView[_]]
+  (val view: B[C[U]]) extends AnyVal
+  {
+    def flatten()(implicit ctx: Scheduler, ct: ClassTag[U]): BlitzView[U] =
+      new BlitzViewFlattenVs[U, B, C] {
+        val zss = view
+      }
+  }
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Implicit-evidence}
+    An example of our use-case:
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+  Array[Int](1, 2, ..., N).bview
+    \end{lstlisting}
+
+    Behind the scene:
+    \begin{lstlisting}[language=scala, basicstyle=\tiny]
+  implicit def toViewable[L, A](col: L)(implicit evidence: IsViewable[L, A]) =
+    new Viewable[L, A](col)(evidence)
+
+  trait IsViewable[L, A] {
+    def apply(c: L): BlitzView[A]
+  }
+
+  class Viewable[L, A](col: L)(evidence: IsViewable[L, A]) {
+    def bview: BlitzView[A] = evidence.apply(col)
+  }
+
+  /* all supported collections have an evidence */
+  implicit def arrayIsViewable[T](implicit ctx: Scheduler) =
+    new IsViewable[Array[T], T] {
+      override def apply(c: Array[T]): BlitzView[T] = {
+        View(c.toPar)(new Array2ZippableConvertor)
+      }
+    }
+
+  /* ... */
+    \end{lstlisting}
 \end{frame}
 
 \section{Conclusion}
+\begin{frame}
+    \frametitle{Future directions}
+    There are more:
+    \begin{itemize}
+        \item Add new type of Views (Generators?)
+        \item Extend API (keep least surprise)
+        \item Generalize to other parallel libraries
+        \item Add smart memorization
+        \item Macro expansions
+    \end{itemize}
+\end{frame}
+
 \begin{frame}
     \frametitle{Thanks}
     {\Huge Thanks for your attention!}
