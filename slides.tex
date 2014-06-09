@@ -1,0 +1,136 @@
+\documentclass[12pt]{beamer}
+\usetheme{Berlin}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\usepackage{lipsum}
+\beamertemplatenavigationsymbolsempty
+
+\pdfinfo{
+    /Author (Axel Angel)
+    /Title (Scala BlitzView)
+    /Subject (Presentation)
+    }
+
+\title{Scala BlitzView \\Presentation}
+\author{Axel Angel \\EPFL, Switzerland \\axel.angel@epfl.ch}
+\date{June 10, 2014}
+
+% "define" Scala listing
+\lstdefinelanguage{scala}{%
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+\lstset{language=scala, basicstyle=\ttfamily\scriptsize}
+
+\newcommand{\eg}{e.\,g.\ }
+\newcommand{\reff}[1]{~\ref{#1}}
+
+\begin{document}
+\begin{frame}
+    \maketitle
+\end{frame}
+
+\begin{frame}
+    \frametitle{Table of Contents}
+    \tableofcontents
+\end{frame}
+
+\section{Introduction}
+\begin{frame}
+    \frametitle{Abstract}
+    % 1/2 lines of desc
+    Scala is a {\bf powerful} language which currently provides a built-in implementation for non-strict views with some important {\bf shortcomings} for the users such as unexpected and unintuitive behavior.
+    %it's not a separate library, but a deeply intergrated part of standrard one(you have .view operation on every collection), the fact that you're able to do good job without requirement to integrate so deep is your advantage.
+
+    In this work we created a new library, based on {\bf Scala Blitz}, to provide lightweight, non-strict and parallel-efficient collections.
+    %collections? or just views
+    We present the library API {\bf design}, implementation and how programmers can use and extend it.
+\end{frame}
+
+\begin{frame}
+    \frametitle{What are Views?}
+    \begin{definition}[View]
+        A non-strict version of one or more collections.
+    \end{definition}
+
+    \begin{definition}[Non-strictness]
+         Evaluation is optionally postponed until the result is actually needed.
+    \end{definition}
+    Non-strictness allows lazy-evaluation for our View (transformers).
+\end{frame}
+
+\begin{frame}
+    \frametitle{What does Views contain?}
+    View {\bf capture} operations:
+    \begin{itemize}
+        \item $O(t)$ memory, stack of transformers
+        \item $O(n)$ operations: efficient computation in a single pass over the inner collection
+    \end{itemize}
+    where $t$ is the number of transformers and $n$ the number of elements.
+
+    \begin{definition}[Forced View]
+        The View is said to be {\it forced} when the postponed computations is performed over all the elements.
+    \end{definition}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Operations}
+    Different type of operations:
+    \begin{description}
+        \item[Transformers:] Postponed and {\bf captured} in Views (no forcing). \\
+            \eg \verb|map| and \verb|filter|.
+            Type: \verb|[a] -> [b]|.
+        \item[Folders:] Last operations, {\bf forcing}. \\
+            \eg \verb|aggregate| and \verb|max|.
+            Type \verb|[a] -> b|.
+    \end{description}
+\end{frame}
+
+\section{Conclusion}
+\begin{frame}
+    \frametitle{Thanks}
+    {\Huge Thanks for your attention!}
+
+    Prototype on GitHub:
+
+    \url{https://github.com/axel-angel/scala-blitzview}
+
+    Includes code samples for free! :)
+\end{frame}
+
+
+\nocite{scala-bitrot}
+
+\begin{frame}
+    \frametitle<presentation>{References}
+    %\bibliography{report}{}
+    %\bibliographystyle{plain}
+    \bibliographystyle{amsalpha}
+    \bibliography{report.bib}
+\end{frame}
+
+\end{document}
