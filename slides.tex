@@ -84,14 +84,15 @@
     \end{definition}
 
     \begin{definition}[Non-strictness]
-         Evaluation is optionally postponed until the result is actually needed.
+         Evaluation is postponed until the result is actually needed.
     \end{definition}
-    Non-strictness allows lazy-evaluation for our View (transformers).
+    Non-strictness allows lazy-evaluation for our View operations (transformers).
+    Use-case: lots of successive operations on elements.
 \end{frame}
 
 \begin{frame}
-    \frametitle{What does Views contain?}
-    View {\bf capture} operations:
+    \frametitle{What do Views contain?}
+    Views {\bf capture} operations (contract):
     \begin{itemize}
         \item $O(t)$ memory, stack of transformers
         \item $O(n)$ operations: efficient computation in a single pass over the inner collection
@@ -99,7 +100,7 @@
     where $t$ is the number of transformers and $n$ the number of elements.
 
     \begin{definition}[Forced View]
-        The View is said to be {\it forced} when the postponed computations is performed over all the elements.
+        The View is said to be {\it forced} when the postponed computations are performed over all the elements.
     \end{definition}
 \end{frame}
 
@@ -149,7 +150,7 @@
         \item Scala common interface inherited from Collections;
         \item Requiring explicit parallel conversion;
         \item Scala unexpected behavior between Views and Par;
-        \item Java type and usability problems;
+        \item Java limitations and usability problems;
         \item Built-in vs ``Hackability'': extension.
     \end{itemize}
 \end{frame}
@@ -163,8 +164,8 @@
         \item Requiring explicit parallel conversion \\
         \item Scala unexpected behavior between Views and Par \\
             $\Rightarrow$ Built-in configurable parallelism (on operations)
-        \item Java type and usability problems \\
-            $\Rightarrow$ Immutability and Scala type system
+        \item Java limitations and usability problems \\
+            $\Rightarrow$ Scala type system and immutability
         \item Built-in vs ``Hackability'': extension \\
             $\Rightarrow$ Separate package and implicits conversions
     \end{itemize}
@@ -230,7 +231,7 @@ trait BlitzView[+B] { // some have [A >: B] for covariance
     \frametitle{Remarks}
     Properties:
     \begin{itemize}
-        \item Sufficient powerful methods implemented (but no more\footnote{``less is more'' as some says})
+        \item Sufficient powerful methods implemented (but no more\footnote{Some says: ``less is more''})
         \item Implicits to configure parallelism (ScalaBlitz\footnote{Homepage: http://scala-blitz.github.io/} {\tt Scheduler})
         \item {\bf Modularity} using common implementation trait
         \item {\bf Extensibility} using implicits (supported collections)
@@ -391,8 +392,13 @@ class Filter[A](p: A => Boolean) extends ViewTransform[A, A] {
         \item Extend API (keep least surprise)
         \item Generalize to other parallel libraries
         \item Add smart memorization
-        \item Macro expansions
+        \item Macro expansions (further optimization)
     \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Insights}
+    What I have learned.
 \end{frame}
 
 \begin{frame}
@@ -404,17 +410,6 @@ class Filter[A](p: A => Boolean) extends ViewTransform[A, A] {
     \url{https://github.com/axel-angel/scala-blitzview}
 
     Includes code samples for free! :)
-\end{frame}
-
-
-\nocite{scala-bitrot}
-
-\begin{frame}
-    \frametitle<presentation>{References}
-    %\bibliography{report}{}
-    %\bibliographystyle{plain}
-    \bibliographystyle{amsalpha}
-    \bibliography{report.bib}
 \end{frame}
 
 \end{document}
